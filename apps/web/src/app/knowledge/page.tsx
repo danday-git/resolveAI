@@ -1,37 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Icon } from "@/components/icons";
-import {
-  Badge,
-  Button,
-  Card,
-  Dialog,
-  EmptyState,
-  ErrorBox,
-  LoadingRows,
-  PageHeader,
-  Spinner,
-  cx,
-  input,
-  td,
-  th,
-  useToast,
-} from "@/components/ui";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Badge, Button, Dialog, EmptyState, ErrorBox, LoadingRows, PageHeader, cx, input, td, th } from "@/components/ui";
+import { useQueryState } from "@/lib/url";
 import { api, errorText, type DocumentChunkPreview, type DocumentMeta, type Page } from "@/lib/api";
 
 const MAX_MB = 10;
 const ACCEPT = ".pdf,.txt,.md,application/pdf,text/plain,text/markdown";
 const kb = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
 
-export default function KnowledgeBase() {
-  const toast = useToast();
+function KnowledgeBase() {
   const [docs, setDocs] = useState<DocumentMeta[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState<string | null>(null);
   const [drag, setDrag] = useState(false);
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState("all");
+  const [query, setQuery] = useQueryState("q");
+  const [status, setStatus] = useQueryState("status", "all");
   const [preview, setPreview] = useState<{ doc: DocumentMeta; chunks: DocumentChunkPreview[] | null } | null>(null);
   const [pendingDelete, setPendingDelete] = useState<DocumentMeta | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -58,7 +42,6 @@ export default function KnowledgeBase() {
     setUploading(file.name);
     try {
       await api("/documents", { method: "POST", body: form });
-      toast("success", `${file.name} uploaded — indexing started.`);
       load();
     } catch (e) {
       setError(errorText(e));
@@ -75,7 +58,6 @@ export default function KnowledgeBase() {
     try {
       await api(`/documents/${d.id}`, { method: "DELETE" });
       if (preview?.doc.id === d.id) setPreview(null);
-      toast("success", `${d.filename} deleted.`);
       load();
     } catch (e) {
       setError(errorText(e));
@@ -86,6 +68,7 @@ export default function KnowledgeBase() {
   }
 
   async function open(d: DocumentMeta) {
+    if (preview?.doc.id === d.id) return setPreview(null);
     setPreview({ doc: d, chunks: null });
     try {
       const p = await api<Page<DocumentChunkPreview>>(`/documents/${d.id}/chunks?limit=100`);
@@ -107,15 +90,60 @@ export default function KnowledgeBase() {
   );
 
   const actions = (d: DocumentMeta) => (
-    <div className="flex justify-end gap-1.5">
-      <Button variant="secondary" size="sm" icon="eye" disabled={d.status !== "ready"} onClick={() => open(d)} aria-label={`Preview ${d.filename}`}>
-        Preview
+    <div className="flex justify-end gap-2">
+      <Button
+        variant="secondary"
+        size="sm"
+        disabled={d.status !== "ready"}
+        title={d.status === "ready" ? undefined : "Available once indexing finishes"}
+        onClick={() => open(d)}
+        aria-label={`Preview ${d.filename}`}
+        aria-expanded={preview?.doc.id === d.id}
+      >
+        {preview?.doc.id === d.id ? "Hide" : "Preview"}
       </Button>
-      <Button variant="danger" size="sm" icon="trash" onClick={() => setPendingDelete(d)} aria-label={`Delete ${d.filename}`}>
-        <span className="sr-only sm:not-sr-only">Delete</span>
+      <Button variant="danger" size="sm" onClick={() => setPendingDelete(d)} aria-label={`Delete ${d.filename}`}>
+        Delete
       </Button>
     </div>
   );
+
+  // The indexed chunks open in place under their document, so the list stays in view.
+  const chunks = (d: DocumentMeta) =>
+    preview?.doc.id === d.id && (
+      <div className="rounded-card border border-rule bg-paper-2" role="region" aria-label={`Source preview of ${d.filename}`}>
+        {!preview.chunks ? (
+          <div className="p-5">
+            <LoadingRows rows={4} label="Loading chunks" />
+          </div>
+        ) : (
+          <>
+            <p className="border-b border-rule px-5 py-3 text-sm text-muted">
+              <span className="measured text-ink-2">{preview.chunks.length}</span> indexed chunks
+            </p>
+            <ol className="max-h-[28rem] overflow-y-auto">
+              {preview.chunks.map((c) => (
+                <li key={c.id} className="grid gap-x-6 gap-y-2 border-b border-rule px-5 py-4 last:border-0 sm:grid-cols-[9rem_minmax(0,1fr)]">
+                  <dl className="measured flex gap-x-4 text-cool sm:flex-col">
+                    <div>
+                      <dt className="visually-hidden">Location</dt>
+                      <dd>
+                        Page {c.page_number}, chunk {c.chunk_index}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="visually-hidden">Size</dt>
+                      <dd className="text-muted">{c.token_count} tokens</dd>
+                    </div>
+                  </dl>
+                  <p className="max-w-[75ch] whitespace-pre-wrap text-sm text-ink-2">{c.text_preview}</p>
+                </li>
+              ))}
+            </ol>
+          </>
+        )}
+      </div>
+    );
 
   return (
     <div className="space-y-6">
@@ -123,7 +151,7 @@ export default function KnowledgeBase() {
         title="Knowledge Base"
         description="Runbooks and SOPs the assistant may cite. Documents are only visible to you."
         actions={
-          <Button icon="upload" loading={!!uploading} onClick={() => fileRef.current?.click()}>
+          <Button loading={!!uploading} onClick={() => fileRef.current?.click()}>
             Upload document
           </Button>
         }
@@ -133,7 +161,7 @@ export default function KnowledgeBase() {
         type="file"
         accept={ACCEPT}
         aria-label="Document file"
-        className="sr-only"
+        className="visually-hidden"
         tabIndex={-1}
         onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])}
       />
@@ -150,140 +178,112 @@ export default function KnowledgeBase() {
           if (f) upload(f);
         }}
         className={cx(
-          "flex flex-col items-center gap-2 rounded-card border-2 border-dashed px-4 py-6 text-center transition-colors sm:flex-row sm:text-left",
-          drag ? "border-indigo-400 bg-indigo-50" : "border-zinc-300 bg-white",
+          "flex flex-wrap items-center justify-between gap-x-6 gap-y-3 rounded-card border border-dashed px-5 py-4 transition-colors duration-[var(--dur-micro)]",
+          drag ? "border-accent bg-accent-soft" : "border-rule-2",
         )}
       >
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-zinc-100 text-zinc-500">
-          {uploading ? <Spinner /> : <Icon name="upload" className="h-5 w-5" />}
-        </span>
-        <div className="flex-1 text-sm">
-          {uploading ? (
-            <p className="font-medium text-zinc-800">Uploading {uploading}…</p>
-          ) : (
-            <p className="font-medium text-zinc-800">
-              Drop a file here, or{" "}
-              <button type="button" className="text-indigo-700 underline-offset-2 hover:underline" onClick={() => fileRef.current?.click()}>
-                browse
-              </button>
-            </p>
-          )}
-          <p className="text-xs text-zinc-500">
-            Text-based PDF, TXT or MD up to {MAX_MB} MB. Scanned PDFs (OCR) are not supported. Use synthetic or permitted documents only.
+        <div className="min-w-0 text-sm">
+          <p className="text-ink" role="status">
+            {uploading ? `Uploading ${uploading}…` : "Drop a file here to add it to the knowledge base."}
+          </p>
+          <p className="mt-1 max-w-[75ch] text-muted">
+            Text-based PDF, TXT or MD up to {MAX_MB}&nbsp;MB. Scanned PDFs (OCR) are not supported. Use synthetic or permitted documents only.
           </p>
         </div>
+        <Button variant="secondary" size="sm" disabled={!!uploading} onClick={() => fileRef.current?.click()}>
+          Browse files
+        </Button>
       </div>
       <ErrorBox message={error} />
-      <Card flush>
-        <div className="flex flex-col gap-2 border-b border-zinc-100 p-3 sm:flex-row sm:items-center sm:px-4">
-          <div className="relative flex-1">
-            <Icon name="search" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-            <input className={`${input} pl-9`} placeholder="Search by filename" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search documents" />
-          </div>
-          <select className={`${input} sm:w-44`} value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Filter by status">
-            <option value="all">All statuses</option>
-            <option value="ready">Ready</option>
-            <option value="processing">Processing</option>
-            <option value="failed">Failed</option>
-          </select>
-        </div>
-        {docs === null ? (
-          <div className="p-5">
-            <LoadingRows rows={4} label="Loading documents" />
-          </div>
-        ) : docs.length === 0 ? (
-          <div className="p-5">
-            <EmptyState icon="book" title="No documents yet" description="Upload an SOP or runbook to get started." />
-          </div>
-        ) : visible.length === 0 ? (
-          <div className="p-5">
-            <EmptyState icon="search" title="No matching documents" description="Try a different filename or status filter." />
-          </div>
-        ) : (
-          <>
-            <div className="hidden overflow-x-auto md:block">
-            <table className="w-full text-sm">
-              <thead className="border-b border-zinc-100 bg-zinc-50/60">
-                <tr>
-                  <th className={th}>File</th>
-                  <th className={th}>Status</th>
-                  <th className={cx(th, "text-right")}>Pages</th>
-                  <th className={cx(th, "text-right")}>Chunks</th>
-                  <th className={cx(th, "hidden xl:table-cell")}>Uploaded</th>
-                  <th className={th}>
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-100">
-                {visible.map((d) => (
-                  <tr key={d.id} className="hover:bg-zinc-50/60">
-                    <td className={td}>
-                      <div className="flex items-center gap-2.5">
-                        <Icon name="file" className="h-4 w-4 text-zinc-400" />
-                        <div className="min-w-0">
-                          <p className="truncate font-medium text-zinc-900">{d.filename}</p>
-                          <p className="text-xs text-zinc-500">{kb(d.size_bytes)}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className={td}>
-                      <Badge value={d.status} />
-                      {d.error_code && (
-                        <p className="mt-1 text-xs text-red-700" title={d.error_message ?? ""}>
-                          {d.error_code}
-                        </p>
-                      )}
-                    </td>
-                    <td className={cx(td, "text-right tabular-nums")}>{d.page_count ?? "–"}</td>
-                    <td className={cx(td, "text-right tabular-nums")}>{d.chunk_count ?? "–"}</td>
-                    <td className={cx(td, "hidden whitespace-nowrap text-xs text-zinc-500 xl:table-cell")}>{new Date(d.created_at).toLocaleString()}</td>
-                    <td className={td}>{actions(d)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
-            <ul className="divide-y divide-zinc-100 md:hidden">
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <input className={`${input} sm:max-w-sm`} type="search" placeholder="Search by filename" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search documents" />
+        <select className={`${input} sm:w-44`} value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Filter by status">
+          <option value="all">All statuses</option>
+          <option value="ready">Ready</option>
+          <option value="processing">Processing</option>
+          <option value="failed">Failed</option>
+        </select>
+      </div>
+      {docs === null ? (
+        !error && <LoadingRows rows={4} label="Loading documents" />
+      ) : docs.length === 0 ? (
+        <EmptyState
+          title="No documents yet"
+          description="The assistant can only answer from what is uploaded here. Add an SOP or runbook to get started."
+          action={
+            <Button variant="secondary" size="sm" onClick={() => fileRef.current?.click()}>
+              Upload document
+            </Button>
+          }
+        />
+      ) : visible.length === 0 ? (
+        <EmptyState title="No matching documents" description="Try a different filename or status filter." />
+      ) : (
+        <>
+          <table className="hidden w-full text-sm md:table">
+            <thead>
+              <tr>
+                <th className={th}>File</th>
+                <th className={th}>Status</th>
+                <th className={cx(th, "text-right")}>Pages</th>
+                <th className={cx(th, "text-right")}>Chunks</th>
+                <th className={cx(th, "text-right")}>Size</th>
+                <th className={cx(th, "hidden lg:table-cell")}>Uploaded</th>
+                <th className={th}>
+                  <span className="visually-hidden">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
               {visible.map((d) => (
-                <li key={d.id} className="space-y-2 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="min-w-0 break-all text-sm font-medium text-zinc-900">{d.filename}</p>
+                <FragmentRow key={d.id} open={preview?.doc.id === d.id} detail={chunks(d)}>
+                  <td className={cx(td, "break-all text-ink")}>{d.filename}</td>
+                  <td className={td}>
                     <Badge value={d.status} />
-                  </div>
-                  <p className="text-xs text-zinc-500">
-                    {d.page_count ?? "–"} pages · {d.chunk_count ?? "–"} chunks · {kb(d.size_bytes)} · {new Date(d.created_at).toLocaleDateString()}
-                  </p>
-                  {d.error_code && <p className="text-xs text-red-700">{d.error_code}: {d.error_message}</p>}
-                  {actions(d)}
-                </li>
+                    {d.error_code && (
+                      <p className="measured mt-1 text-xs text-error" title={d.error_message ?? ""}>
+                        {d.error_code}
+                      </p>
+                    )}
+                  </td>
+                  <td className={cx(td, "measured text-right")}>{d.page_count ?? "–"}</td>
+                  <td className={cx(td, "measured text-right")}>{d.chunk_count ?? "–"}</td>
+                  <td className={cx(td, "measured whitespace-nowrap text-right text-ink-2")}>{kb(d.size_bytes)}</td>
+                  <td className={cx(td, "measured hidden whitespace-nowrap text-ink-2 lg:table-cell")}>{new Date(d.created_at).toLocaleString()}</td>
+                  <td className={cx(td, "py-2")}>{actions(d)}</td>
+                </FragmentRow>
               ))}
-            </ul>
-          </>
-        )}
-      </Card>
-      <Dialog
-        open={!!preview}
-        onClose={() => setPreview(null)}
-        wide
-        title={preview ? `Source preview — ${preview.doc.filename}` : ""}
-        description={preview?.chunks ? `${preview.chunks.length} indexed chunks` : undefined}
-      >
-        {!preview?.chunks ? (
-          <LoadingRows rows={5} label="Loading chunks" />
-        ) : (
-          <ol className="space-y-3">
-            {preview.chunks.map((c) => (
-              <li key={c.id} className="rounded-card border border-zinc-200 bg-zinc-50/60 p-3 text-sm">
-                <p className="mb-1.5 text-xs font-medium text-zinc-500">
-                  Page {c.page_number} · chunk {c.chunk_index} · {c.token_count} tokens
-                </p>
-                <p className="whitespace-pre-wrap leading-relaxed">{c.text_preview}</p>
+            </tbody>
+          </table>
+          <ul className="border-t border-rule-2 md:hidden">
+            {visible.map((d) => (
+              <li key={d.id} className="space-y-3 border-b border-rule py-4">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="min-w-0 break-all text-ink">{d.filename}</p>
+                  <Badge value={d.status} />
+                </div>
+                <dl className="grid grid-cols-[auto_1fr_auto_1fr] gap-x-4 gap-y-1 text-sm">
+                  <dt className="text-muted">Pages</dt>
+                  <dd className="measured">{d.page_count ?? "–"}</dd>
+                  <dt className="text-muted">Chunks</dt>
+                  <dd className="measured">{d.chunk_count ?? "–"}</dd>
+                  <dt className="text-muted">Size</dt>
+                  <dd className="measured">{kb(d.size_bytes)}</dd>
+                  <dt className="text-muted">Uploaded</dt>
+                  <dd className="measured">{new Date(d.created_at).toLocaleString()}</dd>
+                </dl>
+                {d.error_code && (
+                  <p className="text-sm text-error">
+                    <span className="measured">{d.error_code}</span> {d.error_message}
+                  </p>
+                )}
+                {actions(d)}
+                {chunks(d)}
               </li>
             ))}
-          </ol>
-        )}
-      </Dialog>
+          </ul>
+        </>
+      )}
       <Dialog
         open={!!pendingDelete}
         onClose={() => setPendingDelete(null)}
@@ -294,12 +294,35 @@ export default function KnowledgeBase() {
             <Button variant="secondary" onClick={() => setPendingDelete(null)}>
               Cancel
             </Button>
-            <Button variant="danger" icon="trash" loading={deleting} onClick={confirmDelete}>
+            <Button variant="danger" loading={deleting} onClick={confirmDelete}>
               Delete document
             </Button>
           </>
         }
       />
     </div>
+  );
+}
+
+function FragmentRow({ open, detail, children }: { open: boolean; detail: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <>
+      <tr className={open ? "[&>td]:border-transparent" : undefined}>{children}</tr>
+      {open && (
+        <tr>
+          <td colSpan={7} className="border-b border-rule pb-5">
+            {detail}
+          </td>
+        </tr>
+      )}
+    </>
+  );
+}
+
+export default function KnowledgeBasePage() {
+  return (
+    <Suspense>
+      <KnowledgeBase />
+    </Suspense>
   );
 }

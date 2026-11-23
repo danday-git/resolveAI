@@ -2,38 +2,22 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { Suspense, useCallback, useEffect, useState, type ReactNode } from "react";
 import { Icon } from "@/components/icons";
-import {
-  AiLabel,
-  Alert,
-  Badge,
-  Button,
-  Card,
-  EmptyState,
-  ErrorBox,
-  Field,
-  LoadingRows,
-  PageHeader,
-  Tabs,
-  btn,
-  cx,
-  input,
-  useToast,
-} from "@/components/ui";
+import { AiLabel, Alert, Badge, Button, Card, EmptyState, ErrorBox, Field, LoadingRows, PageHeader, Tabs, btn, cx, input, link } from "@/components/ui";
 import { api, errorText, patch, post, type Analysis, type Hypothesis, type IncidentDetail, type Rca, type RcaBody, type Step } from "@/lib/api";
+import { useQueryState } from "@/lib/url";
 
 type Tab = "overview" | "analysis" | "rca";
-type Run = (label: string, fn: () => Promise<unknown>, success?: string, then?: () => void) => Promise<void>;
+type Run = (label: string, fn: () => Promise<unknown>) => Promise<void>;
 
-export default function IncidentWorkspace() {
+function IncidentWorkspace() {
   const { id } = useParams<{ id: string }>();
-  const toast = useToast();
   const [inc, setInc] = useState<IncidentDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [context, setContext] = useState("");
-  const [tab, setTab] = useState<Tab | null>(null);
+  const [tab, setTab] = useQueryState("tab");
 
   const load = useCallback(() => {
     api<IncidentDetail>(`/incidents/${id}`)
@@ -42,13 +26,12 @@ export default function IncidentWorkspace() {
   }, [id]);
   useEffect(load, [load]);
 
-  const run: Run = async (label, fn, success, then) => {
+  // No success toast: every action here changes something the reviewer already sees on the page.
+  const run: Run = async (label, fn) => {
     setBusy(label);
     setError(null);
     try {
       await fn();
-      if (success) toast("success", success);
-      then?.();
       load();
     } catch (e) {
       setError(errorText(e));
@@ -68,36 +51,30 @@ export default function IncidentWorkspace() {
     );
 
   const a = inc.latest_analysis;
-  const current: Tab = tab ?? (inc.rca ? "rca" : a ? "analysis" : "overview");
+  const current: Tab = tab === "overview" || tab === "analysis" || tab === "rca" ? tab : inc.rca ? "rca" : a ? "analysis" : "overview";
 
   return (
     <div>
       <PageHeader
         crumbs={
-          <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-xs text-zinc-500">
-            <Link href="/incidents" className="hover:text-zinc-800">
+          <nav aria-label="Breadcrumb" className="text-sm text-muted">
+            <Link href="/incidents" className={link}>
               Incidents
             </Link>
-            <Icon name="chevronRight" className="h-3 w-3" />
-            <span className="truncate text-zinc-700" aria-current="page">
-              {inc.title}
-            </span>
           </nav>
         }
         title={inc.title}
         description={
-          <span className="flex flex-wrap items-center gap-2">
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
             <Badge value={inc.severity} />
             <Badge value={inc.status} />
             {inc.rca && <Badge value={inc.rca.cause_status}>Cause {inc.rca.cause_status.toLowerCase()}</Badge>}
-            <span className="text-zinc-500">
-              {inc.service}
-              {inc.environment && ` · ${inc.environment}`}
-            </span>
+            <span>{inc.service}</span>
+            {inc.environment && <span className="text-muted">{inc.environment}</span>}
           </span>
         }
       />
-      <div className="space-y-5">
+      <div className="space-y-6">
         <ErrorBox message={error} />
         <Tabs<Tab>
           label="Incident sections"
@@ -113,27 +90,25 @@ export default function IncidentWorkspace() {
           <OverviewTab inc={inc} onAnalyze={() => setTab("analysis")} />
         </div>
         <div role="tabpanel" id="panel-analysis" aria-labelledby="tab-analysis" hidden={current !== "analysis"}>
-          <div className="space-y-5">
-            <Card>
-              <form
-                className="flex flex-col gap-3 sm:flex-row sm:items-end"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  run("analyze", () => post(`/incidents/${id}/analyze`, { context: context || null }), "Analysis complete.");
-                }}
-              >
-                <Field label="Extra context" hint="Optional, e.g. a recent deploy. Treated as untrusted data." className="flex-1">
-                  {(p) => <input {...p} className={input} placeholder="Deployed v2.3 at 09:05" value={context} onChange={(e) => setContext(e.target.value)} />}
-                </Field>
-                <Button type="submit" icon={a ? "refresh" : "sparkle"} loading={busy === "analyze"} disabled={!!busy} className="sm:mb-5">
-                  {busy === "analyze" ? "Analyzing…" : a ? "Re-analyze" : "Analyze incident"}
-                </Button>
-              </form>
-            </Card>
+          <div className="space-y-6">
+            <form
+              className="flex max-w-3xl flex-col gap-3 sm:flex-row sm:items-end"
+              onSubmit={(e) => {
+                e.preventDefault();
+                run("analyze", () => post(`/incidents/${id}/analyze`, { context: context || null }));
+              }}
+            >
+              <Field label="Extra context" hint="Optional, e.g. a recent deploy. Treated as untrusted data." className="flex-1">
+                {(p) => <input {...p} className={input} placeholder="Deployed v2.3 at 09:05" value={context} onChange={(e) => setContext(e.target.value)} />}
+              </Field>
+              <Button type="submit" variant={a ? "secondary" : "primary"} loading={busy === "analyze"} disabled={!!busy} className="sm:mb-[1.375rem]">
+                {busy === "analyze" ? "Analyzing…" : a ? "Re-analyze" : "Analyze incident"}
+              </Button>
+            </form>
             {a ? (
-              <AnalysisView a={a} />
+              <AnalysisView a={a} confirmed={inc.rca?.cause_status === "CONFIRMED"} onReview={() => setTab("rca")} />
             ) : (
-              <EmptyState icon="sparkle" title="No analysis yet" description="Run an analysis to extract observations, suspected causes and read-only verification steps." />
+              <EmptyState title="No analysis yet" description="An analysis reads the sanitized log and lists observations, suspected causes and read-only verification steps. Run one above." />
             )}
           </div>
         </div>
@@ -145,210 +120,239 @@ export default function IncidentWorkspace() {
   );
 }
 
+export default function IncidentWorkspacePage() {
+  return (
+    <Suspense>
+      <IncidentWorkspace />
+    </Suspense>
+  );
+}
+
 function OverviewTab({ inc, onAnalyze }: { inc: IncidentDetail; onAnalyze: () => void }) {
   const fmt = (v: string | null) => (v ? new Date(v).toLocaleString() : "–");
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-      <Card title="Incident record">
-        <dl className="space-y-3 text-sm">
+    <div className="panels lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+      <section className="p-5">
+        <h2>Incident record</h2>
+        <dl className="mt-4 text-sm">
           {(
             [
-              ["Service", inc.service],
-              ["Environment", inc.environment ?? "–"],
-              ["Started", fmt(inc.started_at)],
-              ["Detected", fmt(inc.detected_at)],
+              ["Service", inc.service, false],
+              ["Environment", inc.environment ?? "–", false],
+              ["Started", fmt(inc.started_at), true],
+              ["Detected", fmt(inc.detected_at), true],
             ] as const
-          ).map(([k, v]) => (
-            <div key={k} className="grid grid-cols-[110px_1fr] gap-2">
-              <dt className="text-zinc-500">{k}</dt>
-              <dd className="min-w-0 break-words text-zinc-900">{v}</dd>
+          ).map(([k, v, measured]) => (
+            <div key={k} className="grid grid-cols-[7rem_minmax(0,1fr)] gap-2 border-t border-rule py-2">
+              <dt className="text-muted">{k}</dt>
+              <dd className={cx("break-words", measured && "measured")}>{v}</dd>
             </div>
           ))}
-          <div className="border-t border-zinc-100 pt-3">
-            <dt className="mb-1 text-zinc-500">Symptoms</dt>
-            <dd className="whitespace-pre-wrap leading-relaxed text-zinc-900">{inc.symptoms}</dd>
+          <div className="border-t border-rule pt-3">
+            <dt className="text-muted">Symptoms</dt>
+            <dd className="mt-1 whitespace-pre-wrap text-ink-2">{inc.symptoms}</dd>
           </div>
         </dl>
         {!inc.latest_analysis && (
-          <Button className="mt-5 w-full" icon="sparkle" onClick={onAnalyze}>
+          <Button className="mt-5" onClick={onAnalyze}>
             Continue to analysis
           </Button>
         )}
-      </Card>
-      <Card title="Sanitized log" description="Stored after redaction; this is what the model sees.">
+      </section>
+      <section className="p-5">
+        <h2>Sanitized log</h2>
+        <p className="mt-1.5 text-sm text-muted">Stored after redaction. This is what the model sees.</p>
         {inc.sanitized_log ? (
-          <div className="space-y-3">
-            <pre className="max-h-96 overflow-auto rounded-control bg-zinc-950 p-3 font-mono text-xs leading-relaxed text-zinc-100">{inc.sanitized_log}</pre>
+          <>
+            <pre className="measured mt-4 max-h-96 overflow-auto rounded-pill border border-rule bg-paper-3 p-3 text-ink-2">{inc.sanitized_log}</pre>
             {inc.redaction_summary && Object.keys(inc.redaction_summary).length > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5 text-xs text-zinc-500">
-                <Icon name="shield" className="h-3.5 w-3.5 text-emerald-600" /> Redacted:
+              <p className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted">
+                Redacted
                 {Object.entries(inc.redaction_summary).map(([k, v]) => (
-                  <Badge key={k} value={k} tone="neutral" dot={false}>
+                  <Badge key={k} value={k} tone="neutral">
                     {k} ×{v}
                   </Badge>
                 ))}
-              </div>
+              </p>
             )}
-          </div>
+          </>
         ) : (
-          <EmptyState icon="terminal" title="No log excerpt provided" description="Analysis will list the missing information." />
+          <p className="mt-4 text-sm text-muted">No log excerpt was provided. The analysis will list it as missing information.</p>
         )}
-      </Card>
+      </section>
     </div>
   );
 }
 
-function Section({ title, count, hint, children }: { title: string; count?: number; hint?: ReactNode; children: ReactNode }) {
+/** One entry on the evidence trail: a hairline tick on the spine, then the entry. */
+function Entry({ children, person }: { children: ReactNode; person?: boolean }) {
   return (
-    <section className="min-w-0 space-y-2.5">
-      <h3 className="flex flex-wrap items-baseline gap-2 text-sm font-semibold text-zinc-900">
-        {title}
-        {count !== undefined && <span className="rounded-full bg-zinc-100 px-1.5 text-xs font-medium tabular-nums text-zinc-600">{count}</span>}
-        {hint && <span className="text-xs font-normal text-zinc-500">{hint}</span>}
-      </h3>
+    <li className="relative pb-8 pl-6 last:pb-0">
+      <span className={cx("absolute left-0 top-3 h-px w-4", person ? "bg-accent" : "bg-rule-2")} aria-hidden="true" />
       {children}
-    </section>
+    </li>
+  );
+}
+
+function Stage({ title, count, hint }: { title: string; count?: number; hint?: string }) {
+  return (
+    <li className="relative pb-4 pl-6">
+      <h3 className="flex flex-wrap items-baseline gap-x-3">
+        {title}
+        {count !== undefined && <span className="measured text-muted">{count}</span>}
+        {hint && <span className="text-sm font-normal tracking-normal text-muted">{hint}</span>}
+      </h3>
+    </li>
   );
 }
 
 function StepItem({ s }: { s: Step }) {
   return (
-    <li className="space-y-1.5 rounded-control border border-zinc-200 bg-white p-3">
-      <code className="block overflow-x-auto whitespace-pre rounded bg-zinc-950 px-2.5 py-1.5 font-mono text-xs text-zinc-100">{s.command_or_check}</code>
-      <p className="text-xs text-zinc-600">
-        <span className="font-medium text-zinc-700">Expected:</span> {s.expected_result}
-      </p>
-      <p className="text-xs text-zinc-600">
-        <span className="font-medium text-zinc-700">Meaning:</span> {s.interpretation}
-      </p>
+    <li className="space-y-2">
+      <code className="measured block overflow-x-auto whitespace-pre rounded-pill border border-rule bg-paper-3 px-3 py-2 text-ink">{s.command_or_check}</code>
+      <dl className="grid grid-cols-[5rem_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm">
+        <dt className="text-muted">Expected</dt>
+        <dd className="text-ink-2">{s.expected_result}</dd>
+        <dt className="text-muted">Meaning</dt>
+        <dd className="text-ink-2">{s.interpretation}</dd>
+      </dl>
     </li>
   );
 }
 
-function HypothesisCard({ h, steps }: { h: Hypothesis; steps: Step[] }) {
+function HypothesisEntry({ h, steps }: { h: Hypothesis; steps: Step[] }) {
   return (
-    <li className="space-y-3 rounded-card border border-amber-200 bg-amber-50/40 p-4">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <p className="font-medium text-zinc-900">
-          <span className="mr-2 font-mono text-xs text-zinc-500">{h.id}</span>
-          {h.title}
-        </p>
-        <div className="flex gap-1.5">
-          <Badge value={h.status} />
-          <Badge value={h.confidence}>{h.confidence} confidence</Badge>
-        </div>
+    <Entry>
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className="measured text-cool">{h.id}</span>
+        <p className="text-ink">{h.title}</p>
+        <Badge value={h.status} />
+        <Badge value={h.confidence} tone="neutral">
+          {h.confidence} confidence
+        </Badge>
       </div>
-      <p className="text-sm leading-relaxed text-zinc-700">{h.explanation}</p>
-      <p className="text-xs text-zinc-500">
-        Supports: <span className="font-mono">{h.supporting_evidence.join(", ") || "–"}</span> · Contradicts:{" "}
-        <span className="font-mono">{h.contradicting_evidence.join(", ") || "–"}</span>
-      </p>
+      <p className="mt-2 max-w-[75ch] text-sm text-ink-2">{h.explanation}</p>
+      <dl className="mt-2 grid grid-cols-[5rem_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm">
+        <dt className="text-muted">Supports</dt>
+        <dd className="measured text-cool">{h.supporting_evidence.join(", ") || "–"}</dd>
+        <dt className="text-muted">Contradicts</dt>
+        <dd className="measured text-cool">{h.contradicting_evidence.join(", ") || "–"}</dd>
+      </dl>
       {steps.length > 0 && (
-        <div className="space-y-2">
-          <p className="flex items-center gap-1.5 text-xs font-medium text-zinc-700">
-            <Icon name="terminal" className="h-3.5 w-3.5" /> Read-only verification
-          </p>
-          <ol className="space-y-2">
+        <div className="mt-4 max-w-[75ch]">
+          <p className="text-sm text-muted">Read-only verification</p>
+          <ol className="mt-2 space-y-4">
             {steps.map((s) => (
               <StepItem key={s.id} s={s} />
             ))}
           </ol>
         </div>
       )}
-    </li>
+    </Entry>
   );
 }
 
-function AnalysisView({ a }: { a: Analysis }) {
+/** The evidence trail: what the log shows, what the model suspects, how to check it, and the reviewer's decision, on one spine. */
+function AnalysisView({ a, confirmed, onReview }: { a: Analysis; confirmed: boolean; onReview: () => void }) {
   const orphanSteps = a.verification_steps.filter((s) => !a.hypotheses.some((h) => h.id === s.hypothesis_id));
   return (
-    <div className="space-y-5 text-sm">
-      <Alert tone="warning">
-        <span className="flex flex-wrap items-center gap-2">
-          <AiLabel /> {a.disclaimer ?? "AI-generated suspected causes; nothing here is confirmed."}
-          <span className="text-xs text-amber-700">
-            {a.provider}/{a.model} · {new Date(a.created_at).toLocaleString()}
+    <div className="space-y-6">
+      <Alert tone="info">
+        <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <AiLabel />
+          <span>{a.disclaimer ?? "AI-generated suspected causes; nothing here is confirmed."}</span>
+          <span className="measured text-cool">
+            {a.provider}/{a.model}
           </span>
+          <span className="measured text-muted">{new Date(a.created_at).toLocaleString()}</span>
         </span>
       </Alert>
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-        <Section title="Observations" count={a.observations.length} hint="evidence from the log">
-          {a.observations.length === 0 ? (
-            <EmptyState title="No observations extracted" />
-          ) : (
-            <ul className="space-y-2">
-              {a.observations.map((o) => (
-                <li key={o.id} className="rounded-control border border-zinc-200 bg-white p-3">
-                  <p className="flex flex-wrap items-center gap-x-2 text-xs text-zinc-500">
-                    <span className="font-mono">{o.id}</span>
-                    <span>
-                      {o.source}
-                      {o.line_number ? ` · line ${o.line_number}` : ""}
-                    </span>
-                    <span className="rounded bg-zinc-100 px-1.5 font-mono text-[11px] text-zinc-600">{o.category}</span>
-                  </p>
-                  <pre className="mt-1.5 whitespace-pre-wrap break-words font-mono text-xs text-zinc-800">{o.excerpt}</pre>
-                  {o.interpretation && <p className="mt-1.5 text-xs text-zinc-600">{o.interpretation}</p>}
-                </li>
-              ))}
-            </ul>
-          )}
-        </Section>
-        <div className="min-w-0 space-y-6">
-          <Section title="Hypotheses" count={a.hypotheses.length} hint="suspected, unconfirmed">
-            <ul className="space-y-3">
-              {a.hypotheses.map((h) => (
-                <HypothesisCard key={h.id} h={h} steps={a.verification_steps.filter((s) => s.hypothesis_id === h.id)} />
-              ))}
-            </ul>
-          </Section>
-          {orphanSteps.length > 0 && (
-            <Section title="Other verification steps" hint="never executed by ResolveAI">
-              <ol className="space-y-2">
+      <ol className="border-l border-rule-2" aria-label="Evidence trail">
+        <Stage title="Observations" count={a.observations.length} hint="evidence from the log" />
+        {a.observations.length === 0 && (
+          <Entry>
+            <p className="text-sm text-muted">No observations were extracted from the log.</p>
+          </Entry>
+        )}
+        {a.observations.map((o) => (
+          <Entry key={o.id}>
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <span className="measured text-cool">{o.id}</span>
+              <span className="measured text-muted">
+                {o.source}
+                {o.line_number ? `, line ${o.line_number}` : ""}
+              </span>
+              <span className="measured min-w-0 break-words text-muted">{o.category}</span>
+            </div>
+            <pre className="measured mt-2 max-w-[90ch] whitespace-pre-wrap break-words rounded-pill border border-rule bg-paper-3 px-3 py-2 text-ink">{o.excerpt}</pre>
+            {o.interpretation && <p className="mt-2 max-w-[75ch] text-sm text-ink-2">{o.interpretation}</p>}
+          </Entry>
+        ))}
+        {a.evidence.length > 0 && (
+          <>
+            <Stage title="Knowledge base evidence" count={a.evidence.length} />
+            <Entry>
+              <ul className="measured space-y-1 text-ink-2">
+                {a.evidence.map((e) => (
+                  <li key={e.chunk_id}>
+                    {e.filename ?? e.chunk_id}
+                    {e.page_number ? `, page ${e.page_number}` : ""}
+                  </li>
+                ))}
+              </ul>
+            </Entry>
+          </>
+        )}
+        <Stage title="Hypotheses" count={a.hypotheses.length} hint="suspected, unconfirmed" />
+        {a.hypotheses.map((h) => (
+          <HypothesisEntry key={h.id} h={h} steps={a.verification_steps.filter((s) => s.hypothesis_id === h.id)} />
+        ))}
+        {orphanSteps.length > 0 && (
+          <>
+            <Stage title="Other verification steps" hint="never executed by ResolveAI" />
+            <Entry>
+              <ol className="max-w-[75ch] space-y-4">
                 {orphanSteps.map((s) => (
                   <StepItem key={s.id} s={s} />
                 ))}
               </ol>
-            </Section>
-          )}
-          <p className="flex items-center gap-1.5 text-xs text-zinc-500">
-            <Icon name="shield" className="h-3.5 w-3.5" /> Verification steps are suggestions only and are never executed by ResolveAI.
-          </p>
-          {a.missing_information.length > 0 && (
-            <Section title="Missing information" count={a.missing_information.length}>
-              <ul className="list-disc space-y-1 pl-5 text-zinc-700">
+            </Entry>
+          </>
+        )}
+        {a.missing_information.length > 0 && (
+          <>
+            <Stage title="Missing information" count={a.missing_information.length} />
+            <Entry>
+              <ul className="max-w-[75ch] list-disc space-y-1 pl-5 text-sm text-ink-2">
                 {a.missing_information.map((m, i) => (
                   <li key={i}>{m}</li>
                 ))}
               </ul>
-            </Section>
-          )}
-          {a.safety_warnings.length > 0 && (
-            <Alert tone="danger" title="Safety warnings">
-              <ul className="list-disc space-y-1 pl-5">
-                {a.safety_warnings.map((w, i) => (
-                  <li key={i}>
-                    {w.command && <code className="font-mono text-xs">{w.command}</code>} {w.reason}
-                  </li>
-                ))}
-              </ul>
-            </Alert>
-          )}
-          {a.evidence.length > 0 && (
-            <Section title="Knowledge base evidence" count={a.evidence.length}>
-              <div className="flex flex-wrap gap-1.5">
-                {a.evidence.map((e) => (
-                  <span key={e.chunk_id} className="inline-flex items-center gap-1 rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-xs text-zinc-700">
-                    <Icon name="file" className="h-3 w-3 text-zinc-400" />
-                    {e.filename ?? e.chunk_id}
-                    {e.page_number ? ` p.${e.page_number}` : ""}
-                  </span>
-                ))}
-              </div>
-            </Section>
-          )}
-        </div>
-      </div>
+            </Entry>
+          </>
+        )}
+        <Entry person>
+          <h3 className="text-accent">Reviewer decision</h3>
+          <p className="mt-1 max-w-[75ch] text-sm text-ink-2">
+            {confirmed ? "A reviewer has confirmed the root cause in the RCA." : "Nothing above is confirmed. A reviewer runs the checks, then confirms the root cause in the RCA."}{" "}
+            Verification steps are suggestions only and are never executed by ResolveAI.
+          </p>
+          <Button variant="secondary" size="sm" className="mt-3" onClick={onReview}>
+            Open the RCA
+          </Button>
+        </Entry>
+      </ol>
+      {a.safety_warnings.length > 0 && (
+        <Alert tone="danger" title="Safety warnings">
+          <ul className="list-disc space-y-1 pl-5">
+            {a.safety_warnings.map((w, i) => (
+              <li key={i}>
+                {w.command && <code className="measured">{w.command}</code>} {w.reason}
+              </li>
+            ))}
+          </ul>
+        </Alert>
+      )}
     </div>
   );
 }
@@ -399,10 +403,9 @@ function RcaEditor({
   const generate = (variant: "primary" | "secondary") => (
     <Button
       variant={variant}
-      icon="sparkle"
       disabled={!analysisId || !!busy}
       loading={busy === "rca"}
-      onClick={() => run("rca", () => post(`/incidents/${incidentId}/rca`, { analysis_id: analysisId }), "RCA draft generated — cause remains UNCONFIRMED.")}
+      onClick={() => run("rca", () => post(`/incidents/${incidentId}/rca`, { analysis_id: analysisId }))}
     >
       {busy === "rca" ? "Generating…" : rca ? "Regenerate draft" : "Generate RCA draft"}
     </Button>
@@ -410,14 +413,13 @@ function RcaEditor({
   if (!rca || !body) {
     return (
       <EmptyState
-        icon="file"
         title="No RCA draft yet"
         description={analysisId ? "Generate a structured draft from the latest analysis. It stays unconfirmed until a reviewer signs off." : "RCA drafts are generated from an analysis. Run one first."}
         action={
           analysisId ? (
             generate("primary")
           ) : (
-            <Button variant="secondary" icon="sparkle" onClick={onNeedAnalysis}>
+            <Button variant="secondary" onClick={onNeedAnalysis}>
               Go to analysis
             </Button>
           )
@@ -463,7 +465,6 @@ function RcaEditor({
             preventive_actions: changed.preventive ? parsed.preventive : orig.preventive_actions,
           },
         }),
-      confirmed ? "Draft saved — review reset to UNCONFIRMED." : "Draft saved.",
     );
 
   const text = (k: TextKey, label: string, rows = 3, hint?: string) => (
@@ -473,15 +474,15 @@ function RcaEditor({
   );
   const rawField = (k: keyof typeof raw, label: string, hint: string, mono = false) => (
     <Field label={label} hint={hint}>
-      {(p) => <textarea {...p} className={cx(input, mono && "font-mono text-xs")} rows={4} value={raw[k]} onChange={(e) => setRaw({ ...raw, [k]: e.target.value })} />}
+      {(p) => <textarea {...p} className={cx(input, mono && "measured")} rows={4} value={raw[k]} onChange={(e) => setRaw({ ...raw, [k]: e.target.value })} />}
     </Field>
   );
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
-      <div className="min-w-0 space-y-5">
+    <div className="grid gap-[var(--gap-columns)] lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="min-w-0 space-y-6">
         <Alert tone="info">
-          <span className="flex flex-wrap items-center gap-2">
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <AiLabel /> Draft generated from analysis; edit freely. A cause is only CONFIRMED by explicit reviewer acknowledgement.
           </span>
         </Alert>
@@ -495,9 +496,15 @@ function RcaEditor({
         </Card>
         <Card title="Timeline">{rawField("timeline", "Events", "One per line: time | event | source", true)}</Card>
         <Card title="Root cause" description="Keep the suspected cause separate from what a reviewer has verified.">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-card border border-amber-200 bg-amber-50/40 p-3">{text("suspected_cause", "Suspected cause (unconfirmed)", 4)}</div>
-            <div className="rounded-card border border-emerald-200 bg-emerald-50/40 p-3">
+          <div className="grid gap-5 md:grid-cols-2">
+            <div className="space-y-2">
+              <Badge value="suspected">Written by the model</Badge>
+              {text("suspected_cause", "Suspected cause (unconfirmed)", 4)}
+            </div>
+            <div className="space-y-2">
+              <Badge value="reviewer" tone="person">
+                Written by the reviewer
+              </Badge>
               {text("confirmed_cause", "Confirmed cause", 4, "Reviewer fills this in after verifying evidence.")}
             </div>
           </div>
@@ -510,73 +517,61 @@ function RcaEditor({
         </Card>
         <Card title="Evidence appendix">{rawField("evidence", "Evidence", "One per line: ref | excerpt", true)}</Card>
       </div>
-      <aside className="lg:sticky lg:top-8 lg:self-start">
+      <aside className="lg:sticky lg:top-24 lg:self-start">
         <Card title="Review" description={confirmed ? "This RCA has been confirmed by a reviewer." : "Root cause is not confirmed."}>
-          <div className="space-y-4">
-            <ol className="flex items-center gap-2 text-xs font-medium" aria-label="RCA status">
-              <li className="flex items-center gap-1.5 text-zinc-900">
-                <span className="grid h-5 w-5 place-items-center rounded-full bg-amber-100 text-amber-800">1</span>Draft
+          <div className="space-y-5">
+            <ol className="flex items-center gap-3 text-sm" aria-label="RCA status">
+              <li className={confirmed ? "text-muted" : "text-accent"} aria-current={confirmed ? undefined : "step"}>
+                <span className="measured mr-1.5">1</span>Draft
               </li>
-              <span className="h-px flex-1 bg-zinc-200" aria-hidden="true" />
-              <li className={cx("flex items-center gap-1.5", confirmed ? "text-zinc-900" : "text-zinc-500")} aria-current={confirmed ? "step" : undefined}>
-                <span className={cx("grid h-5 w-5 place-items-center rounded-full", confirmed ? "bg-emerald-100 text-emerald-700" : "bg-zinc-100")}>
-                  {confirmed ? <Icon name="check" className="h-3 w-3" /> : "2"}
-                </span>
-                Confirmed
+              <li className="h-px flex-1 bg-rule-2" aria-hidden="true" />
+              <li className={confirmed ? "text-ok" : "text-muted"} aria-current={confirmed ? "step" : undefined}>
+                <span className="measured mr-1.5">2</span>Confirmed
               </li>
             </ol>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-2">
               <Badge value={rca.status} />
               <Badge value={rca.cause_status}>Cause {rca.cause_status.toLowerCase()}</Badge>
             </div>
             {rca.reviewed_at && rca.reviewer_email && (
-              <p className="text-xs text-zinc-600">
-                Reviewed by <span className="font-medium">{rca.reviewer_email}</span> at {new Date(rca.reviewed_at).toLocaleString()}.
+              <p className="text-sm text-ink-2">
+                Reviewed by <span className="measured text-accent">{rca.reviewer_email}</span> at{" "}
+                <span className="measured">{new Date(rca.reviewed_at).toLocaleString()}</span>.
               </p>
             )}
-            <div className="space-y-2 border-t border-zinc-100 pt-4">
-              <Button className="w-full" variant={dirty ? "primary" : "secondary"} disabled={!dirty || !!busy} loading={busy === "save"} onClick={save}>
+            <div className="grid gap-2 border-t border-rule pt-5">
+              <Button variant="secondary" disabled={!dirty || !!busy} loading={busy === "save"} onClick={save}>
                 {busy === "save" ? "Saving…" : "Save draft"}
               </Button>
-              {dirty && (
-                <p className="text-xs text-amber-700" role="status">
-                  Unsaved changes{confirmed && " — saving resets the review to UNCONFIRMED"}
-                </p>
-              )}
-              <a className={cx(btn("secondary"), "w-full")} href={`/api/v1/incidents/${incidentId}/rca/export`}>
-                <Icon name="download" /> Export Markdown
+              <p className="text-xs text-muted" role="status">
+                {dirty ? `Unsaved changes.${confirmed ? " Saving resets the review to UNCONFIRMED." : ""}` : "No unsaved changes."}
+              </p>
+              <a className={btn("secondary")} href={`/api/v1/incidents/${incidentId}/rca/export`}>
+                Export Markdown
               </a>
-              <div className="[&>button]:w-full">{generate("secondary")}</div>
+              {generate("secondary")}
             </div>
             {!confirmed && (
-              <div className="space-y-3 border-t border-zinc-100 pt-4">
-                <p className="text-xs font-medium text-zinc-700">Before confirming</p>
-                <ul className="space-y-1.5 text-xs">
+              <div className="space-y-4 border-t border-rule pt-5">
+                <h3>Before confirming</h3>
+                <ul className="space-y-2 text-sm">
                   {gates.map(([label, ok]) => (
-                    <li key={label} className={cx("flex items-center gap-2", ok ? "text-zinc-700" : "text-zinc-500")}>
-                      <span className={cx("grid h-4 w-4 place-items-center rounded-full", ok ? "bg-emerald-100 text-emerald-700" : "border border-zinc-300")}>
-                        {ok && <Icon name="check" className="h-2.5 w-2.5" />}
-                      </span>
+                    <li key={label} className={cx("flex items-start gap-2", ok ? "text-ink-2" : "text-muted")}>
+                      {ok ? <Icon name="check" className="mt-1 h-4 w-4 text-ok" /> : <span className="mt-1 h-4 w-4 shrink-0 rounded-chip border border-edge" aria-hidden="true" />}
                       {label}
+                      <span className="visually-hidden">{ok ? "(done)" : "(to do)"}</span>
                     </li>
                   ))}
                 </ul>
-                <label className="flex items-start gap-2 rounded-control border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-700">
-                  <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} className="mt-0.5 h-4 w-4 accent-indigo-600" />
+                <label className="flex items-start gap-3 text-sm text-ink-2">
+                  <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} className="mt-1 h-4 w-4 shrink-0 accent-accent" />
                   <span>I have reviewed the verification evidence and confirm the cause stated in “Confirmed cause”. This records me as reviewer with a timestamp.</span>
                 </label>
                 <Button
                   className="w-full"
-                  icon="check"
                   disabled={!canConfirm || !!busy}
                   loading={busy === "confirm"}
-                  onClick={() =>
-                    run(
-                      "confirm",
-                      () => post(`/incidents/${incidentId}/rca/confirm`, { reviewer_acknowledgement: true, expected_updated_at: rca.updated_at }),
-                      "Root cause confirmed.",
-                    )
-                  }
+                  onClick={() => run("confirm", () => post(`/incidents/${incidentId}/rca/confirm`, { reviewer_acknowledgement: true, expected_updated_at: rca.updated_at }))}
                 >
                   Confirm root cause
                 </Button>

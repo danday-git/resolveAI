@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Icon } from "@/components/icons";
-import { Badge, Card, EmptyState, ErrorBox, LoadingRows, PageHeader, Skeleton, StatCard, btn, cx } from "@/components/ui";
+import { Badge, Card, EmptyState, ErrorBox, LoadingRows, PageHeader, Section, StatCard, btn, link, td, th } from "@/components/ui";
 import { api, errorText, type DocumentMeta, type Incident, type Page } from "@/lib/api";
 import type { MetricsSummary } from "./metrics/page";
 
@@ -35,157 +34,144 @@ export default function Overview() {
   }, []);
 
   const count = (...s: string[]) => docs?.items.filter((d) => s.includes(d.status)).length ?? 0;
-  const loading = metrics === null && !error;
   const cost = metrics?.llm.estimated_cost_usd;
+  const kb = [
+    ["Ready", count("ready"), "bg-ok"],
+    ["Processing", count("queued", "processing"), "bg-cool"],
+    ["Failed", count("failed"), "bg-bad"],
+  ] as const;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-12">
       <PageHeader
         title="Overview"
         description="Knowledge base health, recent incidents and the last 7 days of usage."
         actions={
           <>
             <Link href="/assistant" className={btn("secondary")}>
-              <Icon name="chat" /> Ask assistant
+              Ask assistant
             </Link>
             <Link href="/incidents?new=1" className={btn("primary")}>
-              <Icon name="plus" /> New incident
+              New incident
             </Link>
           </>
         }
       />
       <ErrorBox message={error} />
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {loading ? (
-          Array.from({ length: 4 }, (_, i) => (
-            <div key={i} className="rounded-card border border-zinc-200 bg-white p-4">
-              <Skeleton className="h-3 w-20" />
-              <Skeleton className="mt-3 h-7 w-16" />
-            </div>
-          ))
-        ) : (
-          <>
-            <StatCard label="Incidents" icon="alert" value={incidents?.total ?? "–"} hint="Owned by you" />
-            <StatCard label="Documents ready" icon="book" value={docs ? `${count("ready")}/${docs.total}` : "–"} hint={`${count("failed")} failed`} />
+      <div className="grid gap-x-[var(--gap-columns)] gap-y-12 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <Section
+          title="Recent incidents"
+          actions={
+            <Link className={`${link} text-sm text-ink-2`} href="/incidents">
+              View all
+            </Link>
+          }
+        >
+          {incidents === null ? (
+            !error && <LoadingRows rows={5} />
+          ) : incidents.items.length === 0 ? (
+            <EmptyState
+              title="No incidents yet"
+              description="Create an incident to get structured observations and suspected causes."
+              action={
+                <Link href="/incidents?new=1" className={btn("secondary", "sm")}>
+                  New incident
+                </Link>
+              }
+            />
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr>
+                  <th className={th}>Severity</th>
+                  <th className={th}>Incident</th>
+                  <th className={`${th} max-sm:hidden`}>Opened</th>
+                  <th className={th}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {incidents.items.map((i) => (
+                  <tr key={i.id}>
+                    <td className={td}>
+                      <Badge value={i.severity} />
+                    </td>
+                    <td className={td}>
+                      <Link href={`/incidents/${i.id}`} className={`${link} text-ink`}>
+                        {i.title}
+                      </Link>
+                      <p className="mt-0.5 text-muted">{i.service}</p>
+                    </td>
+                    <td className={`${td} measured whitespace-nowrap text-ink-2 max-sm:hidden`}>{new Date(i.created_at).toLocaleDateString()}</td>
+                    <td className={td}>
+                      <Badge value={i.status} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Section>
+        <div className="space-y-6">
+          <div className="panels grid-cols-2" aria-busy={metrics === null && !error}>
+            <StatCard label="Incidents" value={incidents?.total ?? "–"} hint="Owned by you" />
+            <StatCard label="Documents ready" value={docs ? `${count("ready")}/${docs.total}` : "–"} hint={`${count("failed")} failed`} />
             <StatCard
               label="Requests (7 days)"
-              icon="chart"
               value={metrics?.requests.total ?? "–"}
               hint={metrics ? `${(metrics.requests.error_rate * 100).toFixed(1)}% error rate` : undefined}
             />
             <StatCard
               label="Est. LLM cost (7 days)"
-              icon="sparkle"
-              value={cost === null || cost === undefined ? "Unknown" : `$${cost.toFixed(4)}`}
+              value={metrics === null ? "–" : cost === null || cost === undefined ? "Unknown" : `$${cost.toFixed(4)}`}
               hint={metrics ? `${metrics.llm.calls} model calls` : undefined}
             />
-          </>
-        )}
-      </div>
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card
-          className="lg:col-span-2"
-          title="Recent incidents"
-          actions={
-            <Link className={btn("ghost", "sm")} href="/incidents">
-              View all <Icon name="chevronRight" className="h-3.5 w-3.5" />
-            </Link>
-          }
-          flush
-        >
-          {incidents === null ? (
-            <div className="p-5">
-              <LoadingRows />
-            </div>
-          ) : incidents.items.length === 0 ? (
-            <div className="p-5">
-              <EmptyState
-                icon="alert"
-                title="No incidents yet"
-                description="Create an incident to get structured observations and suspected causes."
-                action={
-                  <Link href="/incidents?new=1" className={btn("primary", "sm")}>
-                    <Icon name="plus" /> New incident
-                  </Link>
-                }
-              />
-            </div>
-          ) : (
-            <ul className="divide-y divide-zinc-100">
-              {incidents.items.map((i) => (
-                <li key={i.id}>
-                  <Link href={`/incidents/${i.id}`} className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-zinc-50 sm:px-5">
-                    <Badge value={i.severity} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-zinc-900">{i.title}</p>
-                      <p className="truncate text-xs text-zinc-500">
-                        {i.service} · {new Date(i.created_at).toLocaleDateString()}
-                      </p>
+          </div>
+          <Card
+            title="Knowledge base"
+            actions={
+              <Link className={`${link} text-sm text-ink-2`} href="/knowledge">
+                Manage
+              </Link>
+            }
+          >
+            {docs === null ? (
+              !error && <LoadingRows />
+            ) : docs.total === 0 ? (
+              <p className="text-sm text-muted">No documents. Upload an SOP or runbook to ground answers.</p>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex h-2 gap-px overflow-hidden rounded-chip bg-rule" aria-hidden="true">
+                  {kb.map(([k, v, c]) => (
+                    <span key={k} className={c} style={{ width: `${(v / docs.total) * 100}%` }} />
+                  ))}
+                </div>
+                <dl className="text-sm">
+                  {kb.map(([k, v]) => (
+                    <div key={k} className="flex items-baseline justify-between border-b border-rule py-2 last:border-0 last:pb-0">
+                      <dt className="text-ink-2">{k}</dt>
+                      <dd className="measured">{v}</dd>
                     </div>
-                    <Badge value={i.status} />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-        <Card
-          title="Knowledge base"
-          actions={
-            <Link className={btn("ghost", "sm")} href="/knowledge">
-              Manage <Icon name="chevronRight" className="h-3.5 w-3.5" />
-            </Link>
-          }
-        >
-          {docs === null ? (
-            <LoadingRows />
-          ) : docs.total === 0 ? (
-            <EmptyState icon="book" title="No documents" description="Upload an SOP or runbook to ground answers." />
-          ) : (
-            <div className="space-y-4">
-              <div className="flex h-2 overflow-hidden rounded-full bg-zinc-100" aria-hidden="true">
-                <span className="bg-emerald-500" style={{ width: `${(count("ready") / docs.total) * 100}%` }} />
-                <span className="bg-sky-500" style={{ width: `${(count("queued", "processing") / docs.total) * 100}%` }} />
-                <span className="bg-red-500" style={{ width: `${(count("failed") / docs.total) * 100}%` }} />
+                  ))}
+                </dl>
               </div>
-              <dl className="space-y-2 text-sm">
-                {(
-                  [
-                    ["Ready", count("ready"), "bg-emerald-500"],
-                    ["Processing", count("queued", "processing"), "bg-sky-500"],
-                    ["Failed", count("failed"), "bg-red-500"],
-                  ] as const
-                ).map(([k, v, c]) => (
-                  <div key={k} className="flex items-center justify-between">
-                    <dt className="flex items-center gap-2 text-zinc-600">
-                      <span className={cx("h-2 w-2 rounded-full", c)} />
-                      {k}
-                    </dt>
-                    <dd className="font-medium tabular-nums">{v}</dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-          )}
-        </Card>
+            )}
+          </Card>
+        </div>
       </div>
-      <Card title="Demo workflow" description="The end-to-end path from knowledge to a confirmed RCA.">
-        <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <Section title="Demo workflow" description="The end-to-end path from knowledge to a confirmed RCA.">
+        <ol className="panels sm:grid-cols-2 lg:grid-cols-4">
           {steps.map(([href, t, d], i) => (
             <li key={t}>
-              <Link href={href} className="group flex h-full gap-3 rounded-card border border-zinc-200 p-3 transition-colors hover:border-indigo-300 hover:bg-indigo-50/40">
-                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-zinc-100 text-xs font-semibold text-zinc-600 group-hover:bg-indigo-100 group-hover:text-indigo-700">
-                  {i + 1}
-                </span>
-                <span>
-                  <span className="block text-sm font-medium text-zinc-900">{t}</span>
-                  <span className="mt-0.5 block text-xs text-zinc-500">{d}</span>
-                </span>
+              <Link href={href} className="block h-full px-5 py-4 no-underline transition-colors duration-[var(--dur-micro)] hover:bg-rule/40 active:bg-rule">
+                <span className="measured text-muted">{i + 1}</span>
+                <span className="mt-2 block text-ink">{t}</span>
+                <span className="mt-1 block text-sm text-muted">{d}</span>
               </Link>
             </li>
           ))}
         </ol>
-      </Card>
+      </Section>
     </div>
   );
 }
+

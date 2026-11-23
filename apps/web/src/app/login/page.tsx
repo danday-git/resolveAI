@@ -22,36 +22,11 @@ function LoginForm() {
   const [busy, setBusy] = useState(false);
 
   return (
-    <div className="grid min-h-dvh lg:grid-cols-[1fr_minmax(420px,1fr)]">
-      <div className="hidden flex-col justify-between bg-zinc-950 p-10 text-zinc-100 lg:flex">
-        <div className="flex items-center gap-2 font-semibold">
-          <span className="grid h-7 w-7 place-items-center rounded-md bg-indigo-600">
-            <Icon name="shield" className="h-4 w-4" />
-          </span>
-          ResolveAI
-        </div>
-        <div className="max-w-md space-y-8">
-          <h2 className="text-3xl font-semibold tracking-tight">Investigate incidents with evidence, not guesses.</h2>
-          <ul className="space-y-5">
-            {points.map(([t, d]) => (
-              <li key={t} className="flex gap-3">
-                <span className="mt-0.5 grid h-6 w-6 place-items-center rounded-full bg-indigo-500/20 text-indigo-300">
-                  <Icon name="check" className="h-3.5 w-3.5" />
-                </span>
-                <div>
-                  <p className="font-medium">{t}</p>
-                  <p className="text-sm text-zinc-400">{d}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <p className="text-xs text-zinc-500">Portfolio demo · synthetic data only</p>
-      </div>
-      <div className="flex items-center justify-center px-4 py-12">
+    <main className="mx-auto grid min-h-dvh max-w-[72rem] content-center gap-x-24 gap-y-16 px-[var(--gutter)] py-16 nav:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
+      <div className="space-y-8">
+        <p className="text-lg font-medium tracking-[var(--tracking-display)]">ResolveAI</p>
         <form
-          className="w-full max-w-sm space-y-5"
-          noValidate={false}
+          className="space-y-5"
           onSubmit={async (e) => {
             e.preventDefault();
             setBusy(true);
@@ -65,17 +40,11 @@ function LoginForm() {
             }
           }}
         >
-          <div className="space-y-1">
-            <div className="mb-6 flex items-center gap-2 font-semibold lg:hidden">
-              <span className="grid h-7 w-7 place-items-center rounded-md bg-indigo-600 text-white">
-                <Icon name="shield" className="h-4 w-4" />
-              </span>
-              ResolveAI
-            </div>
-            <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
-            <p className="text-sm text-zinc-500">
-              Local demo authentication. Credentials come from <code className="font-mono text-xs">DEMO_USER_EMAIL</code> /{" "}
-              <code className="font-mono text-xs">DEMO_USER_PASSWORD</code> (see README).
+          <div className="space-y-3">
+            <h1>Sign in</h1>
+            <p className="text-sm text-muted">
+              Local demo authentication. Credentials come from <code className="measured text-ink-2">DEMO_USER_EMAIL</code> and{" "}
+              <code className="measured text-ink-2">DEMO_USER_PASSWORD</code> (see README).
             </p>
           </div>
           {expired && !error && <Alert tone="warning">Your session expired. Please sign in again.</Alert>}
@@ -98,7 +67,7 @@ function LoginForm() {
                 <button
                   type="button"
                   onClick={() => setShow((s) => !s)}
-                  className="absolute inset-y-0 right-0 grid w-10 place-items-center rounded-r-control text-zinc-500 hover:text-zinc-800"
+                  className="absolute inset-y-0 right-0 grid w-10 place-items-center rounded-r-pill text-muted transition-colors hover:text-ink active:text-accent"
                   aria-label={show ? "Hide password" : "Show password"}
                   aria-pressed={show}
                 >
@@ -112,7 +81,19 @@ function LoginForm() {
           </Button>
         </form>
       </div>
-    </div>
+      <section className="self-center">
+        <h2 className="text-display-s">Investigate incidents with evidence, not guesses.</h2>
+        <dl className="mt-8 border-t border-rule">
+          {points.map(([t, d]) => (
+            <div key={t} className="grid gap-x-6 gap-y-1 border-b border-rule py-4 sm:grid-cols-[12rem_1fr]">
+              <dt className="text-ink">{t}</dt>
+              <dd className="text-sm text-muted">{d}</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="mt-6 text-sm text-muted">Portfolio demo with synthetic data only.</p>
+      </section>
+    </main>
   );
 }
 

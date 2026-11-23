@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Badge, Card, EmptyState, ErrorBox, LoadingRows, PageHeader, StatCard, cx, td, th } from "@/components/ui";
+import { Badge, Card, Empty, ErrorBox, LoadingRows, PageHeader, Section, StatCard, cx, td, th } from "@/components/ui";
 import { api, errorText } from "@/lib/api";
 
 export type MetricsSummary = {
@@ -24,7 +24,7 @@ export type MetricsSummary = {
 
 type Trace = { type: "request" | "llm"; request_id: string; method?: string; route?: string; status_code?: number; duration_ms?: number; created_at: string };
 
-const ms = (v: number | null) => (v === null ? "–" : `${Math.round(v)} ms`);
+const ms = (v: number | null) => (v === null ? "–" : `${Math.round(v)}\u00a0ms`);
 const usd = (v: number | null, digits = 4) => (v === null ? "Unknown" : `$${v.toFixed(digits)}`);
 const n = (v: number) => v.toLocaleString();
 
@@ -45,7 +45,7 @@ export default function Metrics() {
       title="Evaluation / Ops"
       description={
         m
-          ? `${new Date(m.window.from).toLocaleDateString()} – ${new Date(m.window.to).toLocaleDateString()} · costs are estimates from configurable pricing tables · offline evaluation reports live in evals/reports/`
+          ? `${new Date(m.window.from).toLocaleDateString()} to ${new Date(m.window.to).toLocaleDateString()}. Costs are estimates from configurable pricing tables. Offline evaluation reports live in evals/reports/.`
           : "Latency, errors, token usage and estimated spend from real request events."
       }
     />
@@ -74,154 +74,145 @@ export default function Metrics() {
   const errors = [...m.requests.top_errors.map((e) => ({ ...e, kind: "request" })), ...m.ingestion.by_error_code.map((e) => ({ ...e, kind: "ingestion" }))];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-12">
       {header}
-      <section aria-labelledby="req-h" className="space-y-3">
-        <h2 id="req-h" className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-          Requests
-        </h2>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatCard label="Requests" icon="chart" value={n(m.requests.total)} hint={`${n(m.requests.errors)} errors`} />
-          <StatCard label="Error rate" value={`${(m.requests.error_rate * 100).toFixed(1)}%`} />
-          <StatCard label="Latency p50" value={ms(m.requests.p50_ms)} />
-          <StatCard label="Latency p95" value={ms(m.requests.p95_ms)} />
-        </div>
-      </section>
-      <section aria-labelledby="llm-h" className="space-y-3">
-        <h2 id="llm-h" className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-          Model usage
-        </h2>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatCard label="LLM calls" icon="sparkle" value={n(m.llm.calls)} hint={`${n(m.llm.errors)} errors · p95 ${ms(m.llm.p95_ms)}`} />
+      <div className="panels lg:grid-cols-[22rem_minmax(0,1fr)]">
+        <section aria-labelledby="req-h" className="p-5">
+          <h2 id="req-h">Requests</h2>
+          <p className="reading mt-6">{n(m.requests.total)}</p>
+          <p className="mt-2 text-sm text-muted">{n(m.requests.errors)} errors</p>
+          <dl className="mt-6 text-sm">
+            {[
+              ["Error rate", `${(m.requests.error_rate * 100).toFixed(1)}%`],
+              ["Latency p50", ms(m.requests.p50_ms)],
+              ["Latency p95", ms(m.requests.p95_ms)],
+            ].map(([k, v]) => (
+              <div key={k} className="flex items-baseline justify-between border-t border-rule py-2 last:pb-0">
+                <dt className="text-ink-2">{k}</dt>
+                <dd className="measured">{v}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+        <section aria-labelledby="tok-h" className="flex flex-col p-5">
+          <h2 id="tok-h">Tokens per day</h2>
+          {m.llm.by_day.length === 0 ? (
+            <Empty>No model calls in this window yet. Ask the assistant or analyze an incident and the daily totals appear here.</Empty>
+          ) : (
+            <ol className="mt-6 flex min-h-44 flex-1 items-end gap-4 overflow-x-auto border-b border-rule-2" aria-label="Tokens per day">
+              {m.llm.by_day.map((d) => (
+                <li key={d.date} className="flex h-full min-w-12 flex-col items-center justify-end gap-1.5" title={`${d.date}: ${n(d.tokens)} tokens, ${usd(d.estimated_cost_usd)}`}>
+                  <span className="measured text-xs text-ink-2">{n(d.tokens)}</span>
+                  <span className="w-6 rounded-t-chip bg-cool" style={{ height: `${(d.tokens / maxTokens) * 100}%`, minHeight: 1 }} />
+                  <span className="measured pb-1.5 text-xs text-muted">{d.date.slice(5)}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
+      </div>
+      <Section title="Model usage">
+        <div className="panels grid-cols-2 lg:grid-cols-4">
+          <StatCard label="LLM calls" value={n(m.llm.calls)} hint={`${n(m.llm.errors)} errors, p95 ${ms(m.llm.p95_ms)}`} />
           <StatCard label="Input tokens" value={n(m.llm.input_tokens)} />
           <StatCard label="Output tokens" value={n(m.llm.output_tokens)} />
           <StatCard label="Estimated cost" value={usd(m.llm.estimated_cost_usd)} hint={`Ingestion failures ${m.ingestion.failed} / ${m.ingestion.documents_total}`} />
         </div>
-      </section>
-      <div className="grid gap-5 lg:grid-cols-3">
-        <Card title="Alert thresholds" description="Simulated, demo only — no paging.">
-          <ul className="space-y-3 text-sm">
-            {alerts.map(([label, on]) => (
-              <li key={label} className="flex items-center justify-between gap-3">
-                <span className="text-zinc-700">{label}</span>
-                <Badge value={on ? "alert" : "ok"} tone={on ? "danger" : "success"}>
-                  {on ? "Alert" : "OK"}
-                </Badge>
-              </li>
-            ))}
-          </ul>
-        </Card>
-        <Card title="Tokens per day" className="lg:col-span-2">
-          {m.llm.by_day.length === 0 ? (
-            <EmptyState icon="chart" title="No metrics available" description="Model calls will appear here." />
-          ) : (
-            <div className="flex h-44 items-end gap-2 overflow-x-auto" role="img" aria-label="Tokens per day bar chart">
-              {m.llm.by_day.map((d) => (
-                <div key={d.date} className="flex h-full min-w-12 flex-1 flex-col items-center justify-end gap-1.5" title={`${d.date}: ${n(d.tokens)} tokens · ${usd(d.estimated_cost_usd)}`}>
-                  <span className="text-[11px] tabular-nums text-zinc-500">{n(d.tokens)}</span>
-                  <span className="w-full max-w-14 rounded-t bg-indigo-500" style={{ height: `${Math.max(4, (d.tokens / maxTokens) * 100)}%` }} />
-                  <span className="text-[11px] text-zinc-500">{d.date.slice(5)}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-      </div>
-      <div className="grid gap-5 lg:grid-cols-2">
-        <Card title="By provider / model" flush>
-          {m.llm.by_provider_model.length === 0 ? (
-            <div className="p-5">
-              <EmptyState title="No LLM calls yet" />
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="border-b border-zinc-100 bg-zinc-50/60">
-                  <tr>
-                    <th className={th}>Provider / model</th>
-                    <th className={cx(th, "text-right")}>Calls</th>
-                    <th className={cx(th, "text-right")}>In</th>
-                    <th className={cx(th, "text-right")}>Out</th>
-                    <th className={cx(th, "text-right")}>Est. $</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-100">
-                  {m.llm.by_provider_model.map((r) => (
-                    <tr key={r.provider + r.model}>
-                      <td className={td}>
-                        <span className="font-medium text-zinc-900">{r.provider}</span>
-                        <span className="block font-mono text-xs text-zinc-500">{r.model}</span>
-                      </td>
-                      <td className={cx(td, "text-right tabular-nums")}>{n(r.calls)}</td>
-                      <td className={cx(td, "text-right tabular-nums")}>{n(r.input_tokens)}</td>
-                      <td className={cx(td, "text-right tabular-nums")}>{n(r.output_tokens)}</td>
-                      <td className={cx(td, "text-right tabular-nums")}>{r.estimated_cost_usd === null ? "Unknown" : r.estimated_cost_usd.toFixed(5)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Card>
-        <Card title="Top errors" flush>
-          {errors.length === 0 ? (
-            <div className="p-5">
-              <EmptyState icon="check" title="No errors recorded" />
-            </div>
-          ) : (
-            <ul className="divide-y divide-zinc-100 text-sm">
-              {errors.map((e) => (
-                <li key={e.kind + e.code} className="flex items-center justify-between gap-3 px-4 py-2.5 sm:px-5">
-                  <span className="flex min-w-0 items-center gap-2">
-                    <Badge value={e.kind} tone={e.kind === "ingestion" ? "orange" : "danger"} dot={false} />
-                    <code className="truncate font-mono text-xs text-zinc-800">{e.code}</code>
-                  </span>
-                  <span className="tabular-nums text-zinc-600">{n(e.count)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      </div>
-      <Card title="Recent request traces" description="Last 25 API requests. Hover a row for its request ID." flush>
-        {traces === null ? (
-          <div className="p-5">
-            <LoadingRows rows={4} />
-          </div>
-        ) : traces.length === 0 ? (
-          <div className="p-5">
-            <EmptyState title="No traces yet" />
-          </div>
+        {m.llm.by_provider_model.length === 0 ? (
+          <Empty>No LLM calls yet.</Empty>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[560px] text-sm">
-              <thead className="border-b border-zinc-100 bg-zinc-50/60">
+            <table className="w-full text-sm">
+              <thead>
                 <tr>
-                  <th className={th}>Time</th>
-                  <th className={th}>Route</th>
-                  <th className={th}>Status</th>
-                  <th className={cx(th, "text-right")}>Duration</th>
+                  <th className={th}>Provider and model</th>
+                  <th className={cx(th, "text-right")}>Calls</th>
+                  <th className={cx(th, "text-right")}>Input</th>
+                  <th className={cx(th, "text-right")}>Output</th>
+                  <th className={cx(th, "text-right")}>Est. cost</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100">
-                {traces.map((t, i) => (
-                  <tr key={t.request_id + i} title={`request ${t.request_id}`} className="hover:bg-zinc-50/60">
-                    <td className={cx(td, "whitespace-nowrap text-xs text-zinc-500")}>{new Date(t.created_at).toLocaleTimeString()}</td>
-                    <td className={td}>
-                      <span className="mr-2 rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-[11px] font-medium text-zinc-700">{t.method}</span>
-                      <span className="font-mono text-xs text-zinc-800">{t.route}</span>
+              <tbody>
+                {m.llm.by_provider_model.map((r) => (
+                  <tr key={r.provider + r.model}>
+                    <td className={cx(td, "measured text-cool")}>
+                      {r.provider}/{r.model}
                     </td>
-                    <td className={td}>
-                      <Badge value={String(t.status_code)} tone={(t.status_code ?? 0) >= 500 ? "danger" : (t.status_code ?? 0) >= 400 ? "warning" : "success"} />
-                    </td>
-                    <td className={cx(td, "text-right tabular-nums")}>{t.duration_ms} ms</td>
+                    <td className={cx(td, "measured text-right")}>{n(r.calls)}</td>
+                    <td className={cx(td, "measured text-right")}>{n(r.input_tokens)}</td>
+                    <td className={cx(td, "measured text-right")}>{n(r.output_tokens)}</td>
+                    <td className={cx(td, "measured text-right")}>{usd(r.estimated_cost_usd, 5)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-      </Card>
+      </Section>
+      <div className="grid gap-[var(--gap-columns)] lg:grid-cols-2">
+        <Card title="Alert thresholds" description="Simulated for the demo. Nothing is paged.">
+          <ul className="text-sm">
+            {alerts.map(([label, on]) => (
+              <li key={label} className="flex items-center justify-between gap-3 border-b border-rule py-2.5 first:pt-0 last:border-0 last:pb-0">
+                <span className="text-ink-2">{label}</span>
+                <Badge value={on ? "Alert" : "OK"} tone={on ? "bad" : "ok"} />
+              </li>
+            ))}
+          </ul>
+        </Card>
+        <Card title="Top errors">
+          {errors.length === 0 ? (
+            <Empty>No errors recorded in this window.</Empty>
+          ) : (
+            <ul className="text-sm">
+              {errors.map((e) => (
+                <li key={e.kind + e.code} className="flex items-center justify-between gap-3 border-b border-rule py-2.5 first:pt-0 last:border-0 last:pb-0">
+                  <span className="flex min-w-0 items-center gap-3">
+                    <code className="measured truncate text-bad">{e.code}</code>
+                    <span className="text-muted">{e.kind}</span>
+                  </span>
+                  <span className="measured">{n(e.count)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      </div>
+      <Section title="Recent request traces" description="Last 25 API requests, newest first.">
+        {traces === null ? (
+          <LoadingRows rows={4} label="Loading traces" />
+        ) : traces.length === 0 ? (
+          <Empty>No traces yet. Requests appear here as soon as the API serves them.</Empty>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr>
+                <th className={th}>Time</th>
+                <th className={th}>Route</th>
+                <th className={th}>Status</th>
+                <th className={cx(th, "text-right")}>Duration</th>
+                <th className={cx(th, "max-lg:hidden")}>Request</th>
+              </tr>
+            </thead>
+            <tbody>
+              {traces.map((t, i) => (
+                <tr key={t.request_id + i}>
+                  <td className={cx(td, "measured text-ink-2 sm:whitespace-nowrap")}>{new Date(t.created_at).toLocaleTimeString()}</td>
+                  <td className={cx(td, "measured break-all")}>
+                    <span className="mr-2 text-muted">{t.method}</span>
+                    {t.route}
+                  </td>
+                  <td className={td}>
+                    <Badge value={String(t.status_code)} tone={(t.status_code ?? 0) >= 500 ? "bad" : (t.status_code ?? 0) >= 400 ? "neutral" : "ok"} />
+                  </td>
+                  <td className={cx(td, "measured whitespace-nowrap text-right")}>{t.duration_ms}&nbsp;ms</td>
+                  <td className={cx(td, "measured text-cool max-lg:hidden")}>{t.request_id}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Section>
     </div>
   );
 }

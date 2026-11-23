@@ -1,36 +1,40 @@
+/* Hallmark · shape: app screen · genre: modern-minimal · theme: Console (deal 2/3, seed incident-investigation-workbench-support-25c0·2824b586·2026-11-23·r0) · redesign: full
+ * nav: top bar, a wordmark, five links and the account; a menu under 60rem · signature: the evidence trail (observation, suspected cause and read-only check on one spine) · states: loading, empty, error, full · console: graphite
+ * axes: dark/grotesk-sans/chromatic-amber · posture: restrained · contrast: pass · v2.0.0 */
+/* Hallmark · pre-emit critique: P4 H4 E4 S4 R4 V4 · weakest: S, the overview read like any admin home; it now opens on the open incidents trail instead of stat cards */
+/* Hallmark · dismissed 70 · every success line on the incident and sign-in screens follows a real response from the incidents and auth API */
+/* Hallmark · dropped chat, chevronRight, download, file, logout, plus, search, shield, sparkle, terminal, upload · these are decorative icon names, not form fields; Console labels its controls with words */
+/* Hallmark · dropped setCreating, onClose={() => setPreview(null)}, onClose={() => setSheet(false)} · the three dialogs became inline panels; the same New incident, Preview and source buttons open and close them */
+/* Hallmark · dropped router.push(`/incidents/${i.id}`), e.stopPropagation() · the whole-row click became the incident title link, so the row needs no click handler */
+/* Hallmark · dropped "Root cause confirmed.", cause remains UNCONFIRMED, "Analysis complete." · the confirm, draft and analyze handlers are kept; only their toast text went, the page itself shows the result */
+/* Hallmark · dropped <Icon name="plus" /> New incident, icon="sparkle" onClick={onNeedAnalysis} · the same two links remain, without their icon */
+/* Hallmark · dropped llm-h, new-incident · ids of a heading and a dialog title that no script or link pointed at */
+/* Hallmark · reworded "by provider / model" to "Provider and model" · it is now the column header of the model usage table */
 @import "tailwindcss";
-
-@theme {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-  --color-accent-50: var(--color-indigo-50);
-  --color-accent-100: var(--color-indigo-100);
-  --color-accent-600: var(--color-indigo-600);
-  --color-accent-700: var(--color-indigo-700);
-  --radius-control: 0.375rem;
-  --radius-card: 0.625rem;
-}
+@import "./tokens.css";
+@import "./base.css" layer(base);
 
 @layer base {
-  html {
-    -webkit-text-size-adjust: 100%;
-  }
-  body {
-    @apply bg-zinc-50 text-zinc-900 antialiased;
-  }
-  :focus-visible {
-    @apply outline-2 outline-offset-2 outline-indigo-500;
-  }
-  ::selection {
-    @apply bg-indigo-100;
-  }
+  html { -webkit-text-size-adjust: 100%; }
+  h1, h2, h3 { max-width: none; }
+  p:not([class]) { max-width: none; }
+  button { cursor: pointer; }
+  button:disabled, [aria-disabled="true"] { cursor: not-allowed; }
+  dialog { color: var(--color-ink); }
+  dialog::backdrop { background: var(--color-scrim); }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
+@layer components {
+  /* What the system wrote: ids, times, logs, commands, counts. Never a label or a control. */
+  .measured { font-family: var(--font-outlier); font-size: var(--text-sm); font-variant-numeric: tabular-nums slashed-zero; }
+  .reading { font-family: var(--font-outlier); font-size: var(--text-reading); line-height: 1; letter-spacing: -0.04em; font-variant-numeric: tabular-nums slashed-zero; color: var(--color-ink); }
+  /* Panels that sit together are one surface divided by 1px seams. */
+  .panels { display: grid; gap: var(--rule-hair); color: var(--color-ink); background: var(--color-rule); border: var(--rule-hair) solid var(--color-rule); border-radius: var(--radius-card); overflow: hidden; }
+  .panels > * { color: var(--color-ink); background: var(--color-paper-2); min-width: 0; }
+  .skeleton { background: var(--color-rule); border-radius: var(--radius-chip); animation: skeleton 1.4s var(--ease-in-out) infinite alternate; }
+  .spin { animation: spin 0.8s linear infinite; }
 }
+
+@keyframes skeleton { from { opacity: 0.45; } to { opacity: 1; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .skeleton, .spin { animation: none; } }
