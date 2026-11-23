@@ -8,6 +8,7 @@ from uuid import uuid4
 
 from sqlalchemy import select
 
+from app.api.auth import set_password
 from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.core.security import hash_password
@@ -29,8 +30,13 @@ def seed(fixtures_dir: Path | None = None) -> None:
                 role="admin",
             )
             db.add(user)
-            db.commit()
-            db.refresh(user)
+        elif user.role != "admin":
+            # Someone signed up with the administrator's address first: the account becomes the
+            # operator's, with the configured password, and its open sessions end.
+            set_password(user, settings.demo_user_password)
+            user.role, user.is_active = "admin", True
+        db.commit()
+        db.refresh(user)
         if fixtures_dir is None:
             fixtures_dir = Path(__file__).resolve().parents[3] / "evals" / "fixtures" / "docs"
         incident_path = fixtures_dir.parent / "incidents" / "nginx-502.json"
