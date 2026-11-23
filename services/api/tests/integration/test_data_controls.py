@@ -6,7 +6,7 @@ from sqlalchemy import select, update
 from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.core.retention import purge_expired
-from app.models import AuditEvent, Incident, RequestLog, User
+from app.models import Analysis, AuditEvent, Incident, RequestLog, User
 from app.services.ingestion.pipeline import ingest_document
 
 INCIDENT = {"title": "Checkout 502", "service": "checkout", "severity": "SEV3", "symptoms": "502"}
@@ -144,8 +144,18 @@ def test_retention_deletes_only_what_is_older_than_the_setting(client, auth_head
     old = datetime.now(UTC) - timedelta(days=40)
     stale = client.post("/api/v1/incidents", headers=auth_headers, json=INCIDENT).json()["id"]
     fresh = client.post("/api/v1/incidents", headers=auth_headers, json=INCIDENT).json()["id"]
+    # An old incident whose RCA was drafted today is still being worked on.
+    worked = client.post("/api/v1/incidents", headers=auth_headers, json=INCIDENT).json()["id"]
+    analysis = client.post(f"/api/v1/incidents/{worked}/analyze", headers=auth_headers, json={})
+    rca = client.post(
+        f"/api/v1/incidents/{worked}/rca",
+        headers=auth_headers,
+        json={"analysis_id": analysis.json()["id"]},
+    )
+    assert rca.status_code < 300
     with SessionLocal() as db:
-        db.execute(update(Incident).where(Incident.id == stale).values(updated_at=old))
+        db.execute(update(Incident).where(Incident.id.in_([stale, worked])).values(updated_at=old))
+        db.execute(update(Analysis).values(created_at=old))
         db.execute(update(RequestLog).values(created_at=old))
         db.commit()
 
@@ -156,6 +166,7 @@ def test_retention_deletes_only_what_is_older_than_the_setting(client, auth_head
     assert purge_expired() == {"incidents": 1}
     assert client.get(f"/api/v1/incidents/{stale}", headers=auth_headers).status_code == 404
     assert client.get(f"/api/v1/incidents/{fresh}", headers=auth_headers).status_code == 200
+    assert client.get(f"/api/v1/incidents/{worked}/rca", headers=auth_headers).status_code == 200
     with SessionLocal() as db:
         assert db.scalar(select(RequestLog.id).limit(1)) is not None  # logs: still unlimited
         purge = db.scalar(select(AuditEvent).where(AuditEvent.action == "retention.purged"))
