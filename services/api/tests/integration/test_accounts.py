@@ -24,7 +24,7 @@ def bearer(response):
     return {"Authorization": f"Bearer {response.json()['access_token']}"}
 
 
-def test_register_makes_members_and_only_the_first_account_an_admin(client, auth_headers):
+def test_register_makes_members(client, auth_headers):
     response = register(client, "New.Person@Example.com")
     assert response.status_code == 201
     user = response.json()["user"]
@@ -36,12 +36,12 @@ def test_register_makes_members_and_only_the_first_account_an_admin(client, auth
     assert client.get("/api/v1/admin/users", headers=auth_headers).json()["total"] == 2
 
 
-def test_first_account_on_an_empty_install_is_admin(clean_database, client):
+def test_first_account_on_an_empty_install_is_not_admin(clean_database, client):
+    # Between `up` and the seed, a public install would hand the first visitor the admin role.
     with SessionLocal() as db:
         db.query(User).delete()
         db.commit()
-    assert register(client, "first@example.com").json()["user"]["role"] == "admin"
-    assert register(client, "second@example.com").json()["user"]["role"] == "member"
+    assert register(client, "first@example.com").json()["user"]["role"] == "member"
 
 
 def test_registration_can_be_closed(client, monkeypatch):

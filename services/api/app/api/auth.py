@@ -15,7 +15,7 @@ from email_validator import EmailNotValidError, validate_email
 from fastapi import APIRouter, Cookie, Depends, Request, Response
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, SecretStr, field_validator
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, missing_llm_consent
@@ -174,13 +174,9 @@ def register(
     rate_limit(f"register:{_client(request)}", request, 5)
     if db.scalar(select(User.id).where(User.email == body.email)):
         raise ApiError(409, "EMAIL_TAKEN", "An account with this email already exists")
-    # The first account on an empty install has to be able to manage the rest.
-    first = db.scalar(select(func.count()).select_from(User)) == 0
-    user = User(
-        email=body.email,
-        password_hash=hash_password(body.password.get_secret_value()),
-        role="admin" if first else "member",
-    )
+    # Never an administrator: on a public install anyone could sign up first.
+    # The administrator is created by `python -m app.seed`.
+    user = User(email=body.email, password_hash=hash_password(body.password.get_secret_value()))
     db.add(user)
     db.flush()
     audit(db, request, user, "auth.register", "user", user.id)
@@ -332,8 +328,7 @@ def _oidc_user(db: Session, request: Request, claims: dict) -> User | None:
     if user is None:
         user = db.scalar(select(User).where(User.email == email))
         if user is None:
-            first = db.scalar(select(func.count()).select_from(User)) == 0
-            user = User(email=email, password_hash="!", role="admin" if first else "member")
+            user = User(email=email, password_hash="!")
             db.add(user)
         elif user.oidc_subject is None:
             # Whoever set this account's password may not own the mailbox: end their access.
