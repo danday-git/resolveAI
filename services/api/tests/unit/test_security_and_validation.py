@@ -50,6 +50,15 @@ def test_redacts_prefixed_secret_keys_without_overredacting_words():
     assert summary["secret"] == 5
 
 
+def test_redacts_quoted_json_credentials_and_preserves_quotes():
+    raw = '"password": "x" \'api_key\': \'x\' "DB_PASS":"x y"'
+
+    clean, summary = redact(raw)
+
+    assert clean == '"password": "[REDACTED]" \'api_key\': \'[REDACTED]\' "DB_PASS":"[REDACTED]"'
+    assert summary["secret"] == 3
+
+
 def test_private_key_and_injection():
     clean, summary = redact("-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----")
     assert "key" not in clean

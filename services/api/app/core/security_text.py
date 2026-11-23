@@ -11,8 +11,13 @@ _BEARER = re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/=-]+")
 _AWS_KEY = re.compile(r"\bAKIA[0-9A-Z]{16}\b")
 _SECRET = re.compile(
     r"(?i)(?<![A-Z0-9_-])"
+    r"(?P<key_quote>['\"]?)"
     r"(?P<key>(?:[A-Z0-9]+[_-])*?(?:api[_-]?key|token|secret|password|passwd|pwd|pass)"
-    r"(?:[_-][A-Z0-9]+)*)(?P<separator>\s*[:=]\s*)[^\s,;]+"
+    r"(?:[_-][A-Z0-9]+)*)(?P=key_quote)(?P<separator>\s*[:=]\s*)"
+    r"(?:"
+    r"(?P<value_quote>['\"])(?:\\.|(?!(?P=value_quote))[\s\S])*(?P=value_quote)"
+    r"|[^\s,;]+"
+    r")"
 )
 _JWT = re.compile(r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b")
 _EMAIL = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
@@ -63,7 +68,12 @@ def redact(text: str) -> tuple[str, dict[str, int]]:
 
 def _count_secret(summary: dict[str, int], match: re.Match[str]) -> str:
     summary["secret"] += 1
-    return f"{match.group('key')}{match.group('separator')}[REDACTED]"
+    key_quote = match.group("key_quote")
+    value_quote = match.group("value_quote") or ""
+    return (
+        f"{key_quote}{match.group('key')}{key_quote}{match.group('separator')}"
+        f"{value_quote}[REDACTED]{value_quote}"
+    )
 
 
 def _redact_public_ip(match: re.Match[str], summary: dict[str, int]) -> str:
