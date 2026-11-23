@@ -78,8 +78,8 @@ Chat and embeddings are configured independently. Changing the **embedding** mod
 |---|---|
 | OpenAI (default) | `LLM_PROVIDER=openai` `EMBEDDING_PROVIDER=openai` `OPENAI_API_KEY=sk-…` `EMBEDDING_MODEL=text-embedding-3-small` `EMBEDDING_DIM=1536` |
 | Anthropic chat + OpenAI embeddings | `LLM_PROVIDER=anthropic` `LLM_MODEL=claude-haiku-4-5` `ANTHROPIC_API_KEY=…` `EMBEDDING_PROVIDER=openai` `OPENAI_API_KEY=…` `EMBEDDING_DIM=1536` |
-| Anthropic chat + local embeddings | `LLM_PROVIDER=anthropic` `ANTHROPIC_API_KEY=…` `EMBEDDING_PROVIDER=ollama` `EMBEDDING_MODEL=nomic-embed-text` `EMBEDDING_DIM=768` |
-| Ollama (free, local) | `LLM_PROVIDER=ollama` `LLM_MODEL=llama3.2:3b` `EMBEDDING_PROVIDER=ollama` `EMBEDDING_MODEL=nomic-embed-text` `EMBEDDING_DIM=768` `OLLAMA_BASE_URL=http://ollama:11434` |
+| Anthropic chat + local embeddings | `LLM_PROVIDER=anthropic` `ANTHROPIC_API_KEY=…` `EMBEDDING_PROVIDER=ollama` `EMBEDDING_MODEL=nomic-embed-text-v2-moe` `EMBEDDING_DIM=768` |
+| Ollama (free, local) | `LLM_PROVIDER=ollama` `LLM_MODEL=llama3.2:3b` `EMBEDDING_PROVIDER=ollama` `EMBEDDING_MODEL=nomic-embed-text-v2-moe` `EMBEDDING_DIM=768` `OLLAMA_BASE_URL=http://ollama:11434` |
 | Mock (no network) | `LLM_PROVIDER=mock` `EMBEDDING_PROVIDER=mock` `EMBEDDING_DIM=256` |
 
 **Anthropic has no embeddings API.** If `LLM_PROVIDER=anthropic` and `EMBEDDING_PROVIDER` is unset, embeddings default to OpenAI (needs `OPENAI_API_KEY`); setting `EMBEDDING_PROVIDER=anthropic` is a startup error.
@@ -89,7 +89,7 @@ Ollama runs as an optional Compose profile:
 ```bash
 docker compose -f infra/docker-compose.yml --env-file .env --profile web --profile ollama up --build -d
 docker compose -f infra/docker-compose.yml exec ollama ollama pull llama3.2:3b
-docker compose -f infra/docker-compose.yml exec ollama ollama pull nomic-embed-text
+docker compose -f infra/docker-compose.yml exec ollama ollama pull nomic-embed-text-v2-moe
 ```
 
 Costs are estimates from the pricing table in `services/api/app/services/llm/pricing.py`; override with `LLM_PRICING_FILE=/path/prices.json` (`{"provider:model": {"input_per_1m": 0.15, "output_per_1m": 0.6}}`). Unknown models record a `null` cost instead of a guess. Every LLM call stores provider and exact model in `llm_requests`.
@@ -171,6 +171,24 @@ Results on the 30-case dataset with free local models (Ollama on an 8-core CPU, 
 
 Reading: every citation that reaches the user is valid with both models, because the server drops the roughly one in four citations the models get wrong. `llama3.2:3b` is the safer choice: no failed requests and no unsupported claims, but it declines about a quarter of answerable questions. `qwen2.5:1.5b` answers more, fails on 4 of 30 requests, and the heuristic flags its answer in 3 of 4 conflicting-document cases for containing the outdated value. Thirty cases is a small sample, and no hosted model (OpenAI, Anthropic) has been evaluated.
 
+### Multilingual questions
+
+The Assistant answers in the language of the question and quotes sources verbatim in their own language, so an Indonesian question can be answered from an English runbook and the other way round. Cross-language retrieval needs a multilingual embedding model; the local default is `nomic-embed-text-v2-moe`. Switching from `nomic-embed-text` keeps `EMBEDDING_DIM=768` but still needs a fresh database and re-ingestion, because vectors from different models are not comparable.
+
+`llama3.2:3b` with `nomic-embed-text-v2-moe` ([`evals/datasets/multilingual.jsonl`](evals/datasets/multilingual.jsonl), 20 cases in Indonesian, Spanish, German, Japanese and English, including an Indonesian SOP):
+
+| Metric | Multilingual (20) | English v1 (30), v2-moe | English v1 (30), nomic-embed-text |
+|---|---|---|---|
+| Recall@5 | 1.00 | 1.00 | 1.00 |
+| Shipped citations valid | 1.00 | 1.00 | 1.00 |
+| Unanswerable questions that abstained | 3 of 3 | 5 of 5 | 5 of 5 |
+| Answerable questions wrongly abstained | 0.24 | 0.20 | 0.28 |
+| Unsupported-claim rate (heuristic) | 0.00 | 0.03 | 0.00 |
+| Required facts present in answers | 1.00 | 0.85 | 0.72 |
+| Latency p50 | 12.6 s | 14.0 s | 15.5 s |
+
+Reading: all 4 wrong abstentions are Indonesian questions about English runbooks, where retrieval found the right chunk but the 3B model declined. The English unsupported claim is one conflicting-document case (`cf-04`) where the model gave the outdated value. In a direct comparison of whole documents, the previous `nomic-embed-text` ranked the right English runbook first for 2 of 10 Indonesian questions; `nomic-embed-text-v2-moe` did for 10 of 10.
+
 ## Limitations
 
 - Data is owned per user. There are no shared team workspaces, so an administrator cannot read or hand over another user's documents and incidents.
@@ -181,6 +199,7 @@ Reading: every citation that reaches the user is valid with both models, because
 - Small local models take 12 to 25 seconds per answer on CPU, and the smallest one fails the structured-output check on some requests (see the evaluation table).
 - The mock provider is extractive and deterministic — useful for tests and keyless demos, not a quality benchmark. Small local models produce more invalid JSON/citations, which the validators turn into abstentions.
 - Unsupported-claim rate in evals is a heuristic (forbidden-claim phrases + citation checks), not human judgement.
+- The fixed decline message ("I don't have enough evidence...") is in English whatever the question language, and small local models sometimes answer in English or mix languages.
 - ResolveAI never executes commands and never auto-remediates. Suggested checks are read-only and must be run by an engineer.
 
 ## License

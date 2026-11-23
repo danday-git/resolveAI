@@ -14,6 +14,12 @@ from app.services.llm.base import (
     EmbeddingResult,
 )
 
+# Latin runs and runs of other scripts are separate tokens, so "VPNクライアント" still yields "vpn".
+# shortcut: CJK is not word-segmented (a kana/kanji run is one token); use a real embedder for CJK.
+_LATIN = "a-z0-9_\u00c0-\u024f\u1e00-\u1eff"
+# Punctuation right after a non-Latin word ("ошибка:", "устройства.") is not a token of its own.
+_TOKEN = rf"(?:[{_LATIN}]|(?<![^\W{_LATIN}])[.:/-])[{_LATIN}.:/-]*|[^\W{_LATIN}]+"
+
 _STOPWORDS = {
     "a",
     "an",
@@ -138,11 +144,7 @@ class MockEmbeddingProvider(EmbeddingProvider):
         )
 
     def _vector(self, text: str) -> list[float]:
-        tokens = [
-            token
-            for token in re.findall(r"[a-z0-9_.:/-]+", text.lower())
-            if token not in _STOPWORDS
-        ]
+        tokens = [token for token in re.findall(_TOKEN, text.lower()) if token not in _STOPWORDS]
         features = [(token, 1.0) for token in tokens]
         features.extend(
             (f"{left} {right}", 0.5) for left, right in zip(tokens, tokens[1:], strict=False)
@@ -199,9 +201,7 @@ class MockChatProvider(ChatProvider):
         question_match = re.search(r"<question>(.*?)</question>", user, re.DOTALL)
         question = question_match.group(1) if question_match else ""
         question_tokens = {
-            token
-            for token in re.findall(r"[a-z0-9_.:/-]+", question.lower())
-            if token not in _STOPWORDS
+            token for token in re.findall(_TOKEN, question.lower()) if token not in _STOPWORDS
         }
         candidates: list[tuple[int, int, str, str]] = []
         stale_chunks: set[str] = set()
@@ -227,7 +227,7 @@ class MockChatProvider(ChatProvider):
                         continue
                     terms = {
                         token
-                        for token in re.findall(r"[a-z0-9_.:/-]+", sentence.lower())
+                        for token in re.findall(_TOKEN, sentence.lower())
                         if token not in _STOPWORDS
                     }
                     score = len(question_tokens & terms)

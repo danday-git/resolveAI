@@ -85,7 +85,7 @@ class OllamaEmbeddingProvider(EmbeddingProvider):
         client: httpx.Client | None = None,
         sleep: Callable[[float], None] = time.sleep,
     ):
-        self.model = settings.embedding_model or "nomic-embed-text"
+        self.model = settings.embedding_model or "nomic-embed-text-v2-moe"
         self.dimension = settings.embedding_dim
         self.batch_size = settings.embedding_batch_size
         self.base_url = settings.ollama_base_url.rstrip("/")
