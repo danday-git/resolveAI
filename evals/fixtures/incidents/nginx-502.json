@@ -1,0 +1,10 @@
+{
+  "title": "Checkout returns HTTP 502 Bad Gateway",
+  "severity": "SEV2",
+  "service": "checkout-web (nginx -> app-backend)",
+  "symptoms": "Since 09:12 UTC users get HTTP 502 Bad Gateway on https://shop.example.com/checkout. Static pages still load. Nginx upstream is configured as proxy_pass http://127.0.0.1:3000. On-call contact: oncall@example.com.",
+  "environment": "Synthetic demo host web-01 (Ubuntu 24.04, nginx 1.24, systemd service app-backend)",
+  "started_at": "2026-11-20T09:12:00Z",
+  "detected_at": "2026-11-20T09:15:00Z",
+  "log_excerpt": "2026/11/20 09:12:03 [error] 2211#2211: *8812 connect() failed (111: Connection refused) while connecting to upstream, client: 203.0.113.45, server: shop.example.com, request: \"GET /checkout HTTP/1.1\", upstream: \"http://127.0.0.1:3000/checkout\", host: \"shop.example.com\"\n2026/11/20 09:12:07 [error] 2211#2211: *8815 connect() failed (111: Connection refused) while connecting to upstream, client: 198.51.100.7, server: shop.example.com, request: \"POST /checkout/pay HTTP/1.1\", upstream: \"http://127.0.0.1:3000/checkout/pay\", host: \"shop.example.com\"\n203.0.113.45 - - [20/Nov/2026:09:12:03 +0000] \"GET /checkout HTTP/1.1\" 502 157 \"-\" \"Mozilla/5.0\"\nNov 20 09:11:58 web-01 systemd[1]: app-backend.service: Main process exited, code=killed, status=9/KILL\nNov 20 09:11:58 web-01 systemd[1]: app-backend.service: Failed with result 'signal'.\n$ systemctl status app-backend\n● app-backend.service - Checkout backend\n     Active: failed (Result: signal) since Thu 2026-11-20 09:11:58 UTC\nAPP_DB_PASSWORD=sup3rS3cretValue\nAuthorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZW1vIn0.c2lnbmF0dXJlLXRlc3Q"
+}
