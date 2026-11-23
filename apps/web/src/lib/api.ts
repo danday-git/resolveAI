@@ -45,6 +45,16 @@ export function errorText(e: unknown): string {
   return "Unexpected error. Please retry.";
 }
 
+export type Me = {
+  id: string;
+  email: string;
+  role: string;
+  external_llm_providers: string[];
+  llm_consent_required: boolean;
+  llm_consent_at: string | null;
+};
+export const providerNames = (ids: string[]) => ids.map((id) => ({ openai: "OpenAI", anthropic: "Anthropic" })[id] ?? id).join(" and ");
+
 export type Page<T> = { items: T[]; total: number; limit: number; offset: number };
 export type DocumentPage = Page<DocumentMeta> & { status_counts: Partial<Record<DocumentMeta["status"], number>> };
 

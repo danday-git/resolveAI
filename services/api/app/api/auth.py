@@ -18,7 +18,7 @@ from pydantic import BaseModel, SecretStr, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, missing_llm_consent
 from app.core.audit import audit
 from app.core.config import get_settings
 from app.core.database import get_db
@@ -83,7 +83,14 @@ def _client(request: Request) -> str:
 
 
 def _public(user: User) -> dict:
-    return {"id": str(user.id), "email": user.email, "role": user.role}
+    return {
+        "id": str(user.id),
+        "email": user.email,
+        "role": user.role,
+        "external_llm_providers": get_settings().external_llm_providers,
+        "llm_consent_required": bool(missing_llm_consent(user)),
+        "llm_consent_at": user.llm_consent_at,
+    }
 
 
 def _start_session(response: Response, user: User) -> dict:
@@ -126,7 +133,11 @@ def create_reset_token(db: Session, user: User) -> str:
 @router.get("/config")
 def auth_config():
     settings = get_settings()
-    return {"registration": settings.allow_registration, "oidc": settings.oidc_enabled}
+    return {
+        "registration": settings.allow_registration,
+        "oidc": settings.oidc_enabled,
+        "retention_days": settings.retention,
+    }
 
 
 @router.post("/login")
@@ -403,4 +414,27 @@ def logout(response: Response):
 
 @router.get("/me")
 def me(user: Annotated[User, Depends(get_current_user)]):
+    return _public(user)
+
+
+class ConsentRequest(BaseModel):
+    granted: bool
+
+
+@router.put("/llm-consent")
+def set_llm_consent(
+    body: ConsentRequest,
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+):
+    """Records the user's own decision to send their data to the external model providers."""
+    providers = get_settings().external_llm_providers
+    if body.granted and not providers:
+        raise ApiError(409, "NO_EXTERNAL_PROVIDER", "No external model provider is configured")
+    user.llm_consent_at = datetime.now(UTC) if body.granted else None
+    user.llm_consent_providers = ",".join(providers) if body.granted else None
+    action = "consent.llm_granted" if body.granted else "consent.llm_withdrawn"
+    audit(db, request, user, action, "user", user.id, providers=providers)
+    db.commit()
     return _public(user)

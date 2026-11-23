@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import { api, post } from "@/lib/api";
+import { api, post, providerNames, type Me } from "@/lib/api";
 import { Icon } from "./icons";
-import { btn, cx } from "./ui";
+import { Alert, btn, cx, link } from "./ui";
 
 const links: [string, string][] = [
   ["/", "Overview"],
@@ -82,7 +82,7 @@ function NavLinks({ path, admin, onNavigate }: { path: string; admin: boolean; o
 export function AppShell({ children }: { children: ReactNode }) {
   const path = usePathname();
   const router = useRouter();
-  const [me, setMe] = useState<{ email: string; role: string } | null>(null);
+  const [me, setMe] = useState<Me | null>(null);
   const [drawer, setDrawer] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const wasDrawerOpen = useRef(false);
@@ -90,10 +90,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (isLogin) return;
-    api<{ email: string; role: string }>("/auth/me")
+    // Refetched on every navigation so the consent notice clears once it is given.
+    api<Me>("/auth/me")
       .then(setMe)
       .catch(() => router.replace("/login"));
-  }, [isLogin, router]);
+  }, [isLogin, router, path]);
 
   useEffect(() => {
     if (!drawer) return;
@@ -199,6 +200,17 @@ export function AppShell({ children }: { children: ReactNode }) {
       </header>
       {drawer && <div className="fixed inset-0 z-[var(--z-sticky)] bg-scrim nav:hidden" onClick={() => setDrawer(false)} />}
       <main id="main" inert={drawer} className="mx-auto w-full max-w-[var(--container)] px-[var(--gutter)] pb-24 pt-10">
+        {me?.llm_consent_required && path !== "/account" && (
+          <div className="mb-6">
+            <Alert tone="warning" title="Uploads, the assistant and incident analysis are paused for your account">
+              They send your data to {providerNames(me.external_llm_providers)}.{" "}
+              <Link href="/account" className={link}>
+                Review and allow it on the Account page
+              </Link>
+              .
+            </Alert>
+          </div>
+        )}
         {children}
       </main>
     </div>

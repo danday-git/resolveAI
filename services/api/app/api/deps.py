@@ -4,6 +4,7 @@ from fastapi import Cookie, Depends, Header, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.errors import ApiError
 from app.core.security import decode_access_token
@@ -50,4 +51,22 @@ def get_owned[ModelT](db: Session, model: type[ModelT], object_id: UUID, user: U
 def require_admin(user: User = Depends(get_current_user)) -> User:
     if user.role != "admin":
         raise ApiError(403, "FORBIDDEN", "Administrator role required")
+    return user
+
+
+def missing_llm_consent(user: User) -> list[str]:
+    """External providers in use that this user has not agreed to send data to."""
+    agreed = set((user.llm_consent_providers or "").split(","))
+    return [name for name in get_settings().external_llm_providers if name not in agreed]
+
+
+def require_llm_consent(user: User = Depends(get_current_user)) -> User:
+    missing = missing_llm_consent(user)
+    if missing:
+        raise ApiError(
+            403,
+            "LLM_CONSENT_REQUIRED",
+            "Allow sending your data to the external model provider on the Account page first",
+            {"providers": missing},
+        )
     return user

@@ -27,11 +27,8 @@ def bearer(response):
 def test_register_makes_members_and_only_the_first_account_an_admin(client, auth_headers):
     response = register(client, "New.Person@Example.com")
     assert response.status_code == 201
-    assert response.json()["user"] == {
-        "id": response.json()["user"]["id"],
-        "email": "new.person@example.com",
-        "role": "member",
-    }
+    user = response.json()["user"]
+    assert (user["email"], user["role"]) == ("new.person@example.com", "member")
     assert register(client, "new.person@example.com").status_code == 409
     assert register(client, "short@example.com", "too-short").status_code == 422
     # A member cannot reach the admin API or another account's data.
@@ -50,7 +47,8 @@ def test_first_account_on_an_empty_install_is_admin(clean_database, client):
 def test_registration_can_be_closed(client, monkeypatch):
     monkeypatch.setattr(get_settings(), "allow_registration", False)
     assert register(client, "x@example.com").status_code == 403
-    assert client.get("/api/v1/auth/config").json() == {"registration": False, "oidc": False}
+    config = client.get("/api/v1/auth/config").json()
+    assert (config["registration"], config["oidc"]) == (False, False)
 
 
 def test_admin_manages_roles_but_never_removes_the_last_admin(client, auth_headers):

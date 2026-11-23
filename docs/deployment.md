@@ -96,7 +96,23 @@ so prompts, documents and incident logs stay out of it.
 **Health.** `GET /health` (process is up) and `GET /ready` (database reachable) on the API are
 used by the Compose health check.
 
-## 6. Updates
+## 6. Data controls
+
+- **Consent.** With `LLM_PROVIDER` or `EMBEDDING_PROVIDER` set to `openai` or `anthropic`, each
+  user must allow sending their data to that provider on the Account page. Until then upload,
+  chat, incident analysis and RCA drafting return `LLM_CONSENT_REQUIRED` for that user.
+  Consent names the provider, so switching provider asks again. Ollama and the mock provider
+  run locally and need no consent.
+- **Retention.** `RETENTION_INCIDENT_DAYS`, `RETENTION_CONVERSATION_DAYS`,
+  `RETENTION_LOG_DAYS` and `RETENTION_AUDIT_DAYS` delete records older than that many days
+  (0 keeps them). Incidents age from their last change. The worker runs the cleanup hourly and
+  writes a `retention.purged` audit entry with the counts. Documents are only deleted by their
+  owner. Backups keep deleted data until they rotate out (`BACKUP_KEEP`).
+- **Audit log.** Sign-ins, account and role changes, consent decisions, uploads, deletions,
+  incident changes, analyses and RCA drafts, edits and confirmations are recorded with the
+  actor, time and record ID, never the content. Administrators read it on the Admin page.
+
+## 7. Updates
 
 ```bash
 git pull

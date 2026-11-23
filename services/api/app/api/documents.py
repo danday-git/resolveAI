@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_owned
+from app.api.deps import get_current_user, get_owned, require_llm_consent
 from app.core.audit import audit
 from app.core.config import get_settings
 from app.core.database import get_db
@@ -37,7 +37,7 @@ def upload_document(
     background_tasks: BackgroundTasks,
     file: Annotated[UploadFile, File()],
     db: Annotated[Session, Depends(get_db)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_llm_consent)],
 ):
     rate_limit_user(user.id, request)
     check_daily_budget(db, user)
@@ -97,6 +97,7 @@ def upload_document(
         status=DocumentStatus.QUEUED,
     )
     db.add(document)
+    audit(db, request, user, "document.uploaded", "document", document_id)
     try:
         db.commit()
     except IntegrityError:
@@ -180,12 +181,14 @@ def get_document(
 @router.delete("/documents/{document_id}", status_code=204)
 def delete_document(
     document_id: UUID,
+    request: Request,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     document = get_owned(db, Document, document_id, user)
     path = Path(document.storage_path)
     db.delete(document)
+    audit(db, request, user, "document.deleted", "document", document_id)
     db.commit()
     path.unlink(missing_ok=True)
 

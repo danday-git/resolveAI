@@ -9,7 +9,8 @@ from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_owned
+from app.api.deps import get_current_user, get_owned, require_llm_consent
+from app.core.audit import audit
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.errors import ApiError
@@ -169,6 +170,7 @@ def _call_model(provider, messages, operation, prompt_version, owner_id, parser)
 @router.post("/incidents", status_code=201)
 def create_incident(
     body: IncidentCreate,
+    request: Request,
     db: Annotated[Session, Depends(get_db)],
     user: Annotated[User, Depends(get_current_user)],
 ):
@@ -188,6 +190,8 @@ def create_incident(
         redaction_summary=summary,
     )
     db.add(incident)
+    db.flush()
+    audit(db, request, user, "incident.created", "incident", incident.id)
     db.commit()
     db.refresh(incident)
     return _incident_json(incident)
@@ -251,6 +255,7 @@ def get_incident(
 def patch_incident(
     incident_id: UUID,
     body: IncidentPatch,
+    request: Request,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -267,6 +272,15 @@ def patch_incident(
         sanitized, summary = redact(body.log_excerpt or "")
         incident.sanitized_log = sanitized if body.log_excerpt is not None else None
         incident.redaction_summary = summary
+    audit(
+        db,
+        request,
+        user,
+        "incident.updated",
+        "incident",
+        incident.id,
+        fields=sorted(body.model_fields_set),
+    )
     db.commit()
     db.refresh(incident)
     return _incident_json(incident)
@@ -275,11 +289,13 @@ def patch_incident(
 @router.delete("/incidents/{incident_id}", status_code=204)
 def delete_incident(
     incident_id: UUID,
+    request: Request,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     incident = get_owned(db, Incident, incident_id, user)
     db.delete(incident)
+    audit(db, request, user, "incident.deleted", "incident", incident_id)
     db.commit()
 
 
@@ -289,7 +305,7 @@ def analyze_incident(
     body: AnalyzeRequest,
     request: Request,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_llm_consent),
     provider=Depends(get_chat_provider),
     embedder=Depends(get_embedding_provider),
 ):
@@ -359,6 +375,7 @@ def analyze_incident(
     db.add(row)
     if incident.status == IncidentStatus.OPEN:
         incident.status = IncidentStatus.INVESTIGATING
+    audit(db, request, user, "incident.analyzed", "incident", incident.id)
     db.commit()
     db.refresh(row)
     return {
@@ -373,7 +390,7 @@ def generate_rca(
     body: RcaGenerateRequest,
     request: Request,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_llm_consent),
     provider=Depends(get_chat_provider),
 ):
     incident = get_owned(db, Incident, incident_id, user)
@@ -425,6 +442,7 @@ def generate_rca(
     report.reviewer_id = None
     report.reviewed_at = None
     report.audit_json = [*(report.audit_json or []), _audit("generated", user)]
+    audit(db, request, user, "rca.generated", "incident", incident.id)
     db.commit()
     db.refresh(report)
     return _rca_json(report, db)
@@ -447,6 +465,7 @@ def get_rca(
 def patch_rca(
     incident_id: UUID,
     body: RcaPatchRequest,
+    request: Request,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -466,6 +485,7 @@ def patch_rca(
     report.audit_json = [*(report.audit_json or []), _audit("edited", user)]
     if reset:
         report.audit_json.append(_audit("review_reset", user))
+    audit(db, request, user, "rca.edited", "incident", incident.id, review_reset=reset)
     db.commit()
     db.refresh(report)
     return _rca_json(report, db)
@@ -475,6 +495,7 @@ def patch_rca(
 def confirm_rca(
     incident_id: UUID,
     body: ConfirmRequest,
+    request: Request,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -497,6 +518,7 @@ def confirm_rca(
     report.reviewer_id = user.id
     report.reviewed_at = datetime.now(UTC)
     report.audit_json = [*(report.audit_json or []), _audit("confirmed", user)]
+    audit(db, request, user, "rca.confirmed", "incident", incident.id)
     db.commit()
     db.refresh(report)
     return _rca_json(report, db)

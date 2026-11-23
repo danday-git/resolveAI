@@ -65,6 +65,9 @@ class User(Base):
     # Sessions issued before this moment are rejected (password change, reset, SSO link).
     password_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     oidc_subject: Mapped[str | None] = mapped_column(String(400), unique=True)
+    # Consent to send document and incident text to these external model providers.
+    llm_consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    llm_consent_providers: Mapped[str | None] = mapped_column(String(100))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

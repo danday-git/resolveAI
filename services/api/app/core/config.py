@@ -55,6 +55,11 @@ class Settings(BaseSettings):
     context_token_budget: int = 3000
     rate_limit_per_minute: int = 30
     daily_budget_usd: float = 1.0
+    # Days to keep each kind of record; 0 keeps it forever. The worker deletes what is older.
+    retention_incident_days: int = 0
+    retention_conversation_days: int = 0
+    retention_log_days: int = 0
+    retention_audit_days: int = 0
     cors_origins: str = "http://localhost:3000"
     cookie_secure: bool = False
     app_url: str = "http://localhost:3000"
@@ -110,6 +115,21 @@ class Settings(BaseSettings):
         if self.embedding_model is None:
             self.embedding_model = defaults[self.embedding_provider][1]
         return self
+
+    @property
+    def external_llm_providers(self) -> list[str]:
+        """Third parties that receive document and incident text. Users must consent first.
+        A self-hosted server behind OPENAI_BASE_URL still counts: the name is all we can check."""
+        return sorted({self.llm_provider, str(self.embedding_provider)} & {"openai", "anthropic"})
+
+    @property
+    def retention(self) -> dict[str, int]:
+        return {
+            "incidents": self.retention_incident_days,
+            "conversations": self.retention_conversation_days,
+            "logs": self.retention_log_days,
+            "audit": self.retention_audit_days,
+        }
 
     @property
     def oidc_enabled(self) -> bool:
