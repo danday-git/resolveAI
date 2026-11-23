@@ -517,7 +517,7 @@ function RcaEditor({
         </Card>
         <Card title="Evidence appendix">{rawField("evidence", "Evidence", "One per line: ref | excerpt", true)}</Card>
       </div>
-      <aside className="lg:sticky lg:top-24 lg:self-start">
+      <aside className="lg:sticky lg:top-10 lg:self-start">
         <Card title="Review" description={confirmed ? "This RCA has been confirmed by a reviewer." : "Root cause is not confirmed."}>
           <div className="space-y-5">
             <ol className="flex items-center gap-3 text-sm" aria-label="RCA status">

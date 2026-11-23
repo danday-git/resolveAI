@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { Icon } from "@/components/icons";
+import { ThemeToggle } from "@/components/Nav";
 import { Alert, Button, Field, input } from "@/components/ui";
 import { errorText, post } from "@/lib/api";
 
@@ -24,7 +25,10 @@ function LoginForm() {
   return (
     <main className="mx-auto grid min-h-dvh max-w-[72rem] content-center gap-x-24 gap-y-16 px-[var(--gutter)] py-16 nav:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
       <div className="space-y-8">
-        <p className="text-lg font-medium tracking-[var(--tracking-display)]">ResolveAI</p>
+        <div className="flex items-center justify-between">
+          <p className="text-lg font-medium tracking-[var(--tracking-display)]">ResolveAI</p>
+          <ThemeToggle />
+        </div>
         <form
           className="space-y-5"
           onSubmit={async (e) => {

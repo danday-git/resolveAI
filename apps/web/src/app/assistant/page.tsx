@@ -152,7 +152,7 @@ export default function Assistant() {
         </form>
       </div>
       <aside className="hidden lg:block">
-        <div className="sticky top-24">
+        <div className="sticky top-10">
           <Card title="Source excerpt" description="Exact text the citation was validated against.">
             {source}
           </Card>

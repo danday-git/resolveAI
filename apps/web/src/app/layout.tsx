@@ -11,11 +11,15 @@ export const metadata: Metadata = {
   description: "Evidence-grounded incident investigation: cited answers, structured analysis and human-confirmed root cause reports.",
 };
 
-export const viewport: Viewport = { width: "device-width", initialScale: 1, colorScheme: "dark" };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, colorScheme: "dark light" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${host.variable} ${atkinson.variable}`}>
+    <html lang="en" className={`${host.variable} ${atkinson.variable}`} suppressHydrationWarning>
+      <head>
+        {/* Applies the stored theme before first paint, so the light theme never flashes dark. */}
+        <script dangerouslySetInnerHTML={{ __html: `try{if(localStorage.getItem("theme")==="paper")document.documentElement.dataset.theme="paper"}catch(e){}` }} />
+      </head>
       <body>
         <AppShell>{children}</AppShell>
       </body>

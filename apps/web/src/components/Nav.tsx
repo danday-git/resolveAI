@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { api, post } from "@/lib/api";
 import { Icon } from "./icons";
 import { btn, cx } from "./ui";
@@ -23,9 +23,40 @@ function Brand({ onClick }: { onClick?: () => void }) {
   );
 }
 
-function NavLinks({ path, onNavigate, stacked }: { path: string; onNavigate?: () => void; stacked?: boolean }) {
+const onThemeChange = (cb: () => void) => {
+  window.addEventListener("themechange", cb);
+  return () => window.removeEventListener("themechange", cb);
+};
+
+/** Graphite is the default; "paper" is the light colourway in tokens.css. The inline script in layout.tsx applies the stored choice before first paint. */
+export function ThemeToggle({ className }: { className?: string }) {
+  const light = useSyncExternalStore(
+    onThemeChange,
+    () => document.documentElement.dataset.theme === "paper",
+    () => false,
+  );
   return (
-    <ul className={stacked ? "flex flex-col" : "flex items-center gap-1"}>
+    <button
+      className={cx(btn("ghost", "sm"), className)}
+      onClick={() => {
+        if (light) delete document.documentElement.dataset.theme;
+        else document.documentElement.dataset.theme = "paper";
+        try {
+          localStorage.setItem("theme", light ? "graphite" : "paper");
+        } catch {
+          // Storage can be blocked; the switch still works for this page view.
+        }
+        window.dispatchEvent(new Event("themechange"));
+      }}
+    >
+      {light ? "Dark mode" : "Light mode"}
+    </button>
+  );
+}
+
+function NavLinks({ path, onNavigate }: { path: string; onNavigate?: () => void }) {
+  return (
+    <ul className="flex flex-col gap-0.5">
       {links.map(([href, label]) => {
         const active = href === "/" ? path === "/" : path.startsWith(href);
         return (
@@ -35,9 +66,8 @@ function NavLinks({ path, onNavigate, stacked }: { path: string; onNavigate?: ()
               onClick={onNavigate}
               aria-current={active ? "page" : undefined}
               className={cx(
-                "flex items-center whitespace-nowrap rounded-pill px-3 text-sm no-underline transition-colors duration-[var(--dur-micro)] active:bg-rule",
-                stacked ? "h-11" : "h-9",
-                active ? "bg-paper-2 text-ink" : "text-muted hover:text-ink",
+                "flex h-11 items-center whitespace-nowrap rounded-pill px-3 text-sm no-underline transition-colors duration-[var(--dur-micro)] active:bg-rule nav:h-9",
+                active ? "bg-rule/60 text-ink" : "text-muted hover:text-ink",
               )}
             >
               {label}
@@ -94,41 +124,43 @@ export function AppShell({ children }: { children: ReactNode }) {
     router.replace("/login");
   };
   const account = (
-    <>
-      <span className="measured min-w-0 truncate text-muted" title={email ?? undefined}>
+    <div className="border-t border-rule pt-3">
+      <p className="measured truncate px-3 text-muted" title={email ?? undefined}>
         {email ?? "…"}
-      </span>
-      <button className={btn("ghost", "sm")} onClick={signOut}>
-        Sign out
-      </button>
-    </>
+      </p>
+      <div className="mt-1 flex items-center justify-between gap-2">
+        <ThemeToggle />
+        <button className={btn("ghost", "sm")} onClick={signOut}>
+          Sign out
+        </button>
+      </div>
+    </div>
   );
 
   return (
-    <div className="min-h-dvh">
+    <div className="min-h-dvh nav:grid nav:grid-cols-[15rem_minmax(0,1fr)]">
       <a href="#main" inert={drawer} className="visually-hidden focus:fixed focus:left-2 focus:top-2 focus:z-[var(--z-tooltip)] focus:h-auto focus:w-auto focus:rounded-pill focus:bg-paper-3 focus:px-3 focus:py-2 focus:[clip-path:none]">
         Skip to content
       </a>
-      <header className="sticky top-0 z-[var(--z-sticky-nav)] border-b border-rule bg-paper">
-        <div inert={drawer} className="mx-auto flex h-14 max-w-[var(--container)] items-center gap-6 px-[var(--gutter)]">
+      <aside className="top-0 hidden h-dvh flex-col border-r border-rule px-3 py-4 nav:sticky nav:flex">
+        <div className="px-3">
           <Brand />
-          <nav aria-label="Main" className="hidden min-w-0 flex-1 nav:block">
-            <NavLinks path={path} />
-          </nav>
-          <div className="hidden min-w-0 items-center gap-2 nav:flex">{account}</div>
-          <button
-            ref={menuButtonRef}
-            className={cx(btn("ghost", "sm"), "ml-auto nav:hidden")}
-            onClick={() => setDrawer(true)}
-            aria-label="Open navigation"
-            aria-expanded={drawer}
-          >
+        </div>
+        <nav aria-label="Main" className="mt-6 flex-1 overflow-y-auto">
+          <NavLinks path={path} />
+        </nav>
+        {account}
+      </aside>
+      <header className="sticky top-0 z-[var(--z-sticky-nav)] border-b border-rule bg-paper nav:static nav:hidden">
+        <div inert={drawer} className="flex h-14 items-center justify-between px-[var(--gutter)]">
+          <Brand />
+          <button ref={menuButtonRef} className={btn("ghost", "sm")} onClick={() => setDrawer(true)} aria-label="Open navigation" aria-expanded={drawer}>
             <Icon name="menu" className="h-5 w-5" />
           </button>
         </div>
         {drawer && (
           <div
-            className="absolute inset-x-0 top-0 border-b border-rule-2 bg-paper-2 px-[var(--gutter)] pb-4 nav:hidden"
+            className="absolute inset-x-0 top-0 border-b border-rule-2 bg-paper-2 px-[var(--gutter)] pb-4"
             role="dialog"
             aria-modal="true"
             aria-label="Navigation"
@@ -152,15 +184,15 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <Icon name="x" className="h-5 w-5" />
               </button>
             </div>
-            <nav aria-label="Main" className="-mx-3">
-              <NavLinks path={path} onNavigate={() => setDrawer(false)} stacked />
+            <nav aria-label="Main" className="-mx-3 mb-3">
+              <NavLinks path={path} onNavigate={() => setDrawer(false)} />
             </nav>
-            <div className="mt-3 flex items-center justify-between gap-3 border-t border-rule pt-3">{account}</div>
+            <div className="-mx-3">{account}</div>
           </div>
         )}
       </header>
       {drawer && <div className="fixed inset-0 z-[var(--z-sticky)] bg-scrim nav:hidden" onClick={() => setDrawer(false)} />}
-      <main id="main" inert={drawer} className="mx-auto max-w-[var(--container)] px-[var(--gutter)] pb-24 pt-10">
+      <main id="main" inert={drawer} className="mx-auto w-full max-w-[var(--container)] px-[var(--gutter)] pb-24 pt-10">
         {children}
       </main>
     </div>

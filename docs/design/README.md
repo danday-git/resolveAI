@@ -1,6 +1,6 @@
 # Web UI design system
 
-Direction: **Console**, an app-screen theme from [Hallmark](https://github.com/nutlope/hallmark). Graphite surfaces, pale ink and hairline rules, with no shadows, gradients or blur. It is built for long sessions on dense operational data. The stamp at the top of `apps/web/src/app/globals.css` records the theme, the navigation, the signature and everything the redesign dropped.
+Direction: **Console**, an app-screen theme from [Hallmark](https://github.com/nutlope/hallmark). Graphite surfaces, pale ink and hairline rules, with no shadows, gradients or blur. A switch in the sidebar and on the sign-in page changes to the light "paper" colourway of the same theme. It is built for long sessions on dense operational data. The stamp at the top of `apps/web/src/app/globals.css` records the theme, the navigation, the signature and everything the redesign dropped.
 
 ## What colour and type mean
 
@@ -23,7 +23,9 @@ Tokens are a Tailwind v4 `@theme` block, so every one is also a utility (`bg-pap
 | `rule`, `rule-2`, `edge` | Hairline seams, stronger dividers, input borders |
 | `accent`, `cool`, `ok`, `bad` (each with a `-soft` fill) | See the table above |
 | `radius-card` 10px, `radius-pill` 6px, `radius-chip` 4px | Panels and dialogs, controls, badges |
-| `--breakpoint-nav` 60rem | The `nav:` variant, where the top bar's links collapse into a menu |
+| `--breakpoint-nav` 60rem | The `nav:` variant, where the sidebar gives way to a top bar with a menu |
+
+The light colourway overrides the colour tokens under `html[data-theme="paper"]` in the same file. `ThemeToggle` (`Nav.tsx`) sets that attribute and stores the choice in `localStorage`; an inline script in `layout.tsx` applies it before first paint. Components never branch on the theme.
 
 Motion is limited to 120ms colour transitions, the spinner and the loading skeleton. All of it stops under `prefers-reduced-motion`.
 
@@ -50,7 +52,7 @@ There are no toasts. Every action changes something already visible on the page 
 
 ## Layout
 
-- **App shell (`Nav.tsx`):** a sticky top bar with the wordmark, five links and the account. Below 60rem the links move into a menu that traps focus and closes on Escape, on navigation and when the window widens. A skip link is included.
+- **App shell (`Nav.tsx`):** a 240px sidebar with the wordmark, five links, the account and the theme switch. Below 60rem it becomes a top bar with a menu that traps focus and closes on Escape, on navigation and when the window widens. A skip link is included.
 - **Evidence trail (signature):** the incident Analysis tab puts observations, knowledge base evidence, suspected causes with their read-only checks, and missing information on one spine. It ends in an amber "Reviewer decision" entry, the only step a person owns.
 - **Inline instead of dialogs:** the new incident form, the document preview and the assistant's source excerpt on small screens all open in the page.
 - **State in the URL:** search, filters, the open "New incident" form and the incident tab are mirrored into the query string (`lib/url.ts`), so a view survives reload and can be shared.

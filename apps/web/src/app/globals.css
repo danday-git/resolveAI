@@ -1,5 +1,5 @@
 /* Hallmark · shape: app screen · genre: modern-minimal · theme: Console (deal 2/3, seed incident-investigation-workbench-support-25c0·2824b586·2026-11-23·r0) · redesign: full
- * nav: top bar, a wordmark, five links and the account; a menu under 60rem · signature: the evidence trail (observation, suspected cause and read-only check on one spine) · states: loading, empty, error, full · console: graphite
+ * nav: sidebar, a wordmark, five links, the account and the theme switch (the user asked for a sidebar); a menu under 60rem · signature: the evidence trail (observation, suspected cause and read-only check on one spine) · states: loading, empty, error, full · console: graphite, paper on the theme switch
  * axes: dark/grotesk-sans/chromatic-amber · posture: restrained · contrast: pass · v2.0.0 */
 /* Hallmark · pre-emit critique: P4 H4 E4 S4 R4 V4 · weakest: S, the overview read like any admin home; it now opens on the open incidents trail instead of stat cards */
 /* Hallmark · dismissed 70 · every success line on the incident and sign-in screens follows a real response from the incidents and auth API */
