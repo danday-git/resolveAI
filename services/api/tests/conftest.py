@@ -5,7 +5,7 @@ os.environ.setdefault(
     "TEST_DATABASE_URL",
     "postgresql+psycopg://resolveai:resolveai@localhost:5433/resolveai_test",
 )
-os.environ.setdefault("DATABASE_URL", os.environ["TEST_DATABASE_URL"])
+os.environ["DATABASE_URL"] = os.environ["TEST_DATABASE_URL"]
 os.environ.setdefault("JWT_SECRET", "test-secret-for-resolveai-at-least-32-chars")
 os.environ.setdefault("LLM_PROVIDER", "mock")
 os.environ.setdefault("EMBEDDING_PROVIDER", "mock")
