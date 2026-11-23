@@ -114,8 +114,7 @@ def _start_session(response: Response, user: User) -> dict:
 
 def set_password(user: User, password: str) -> None:
     user.password_hash = hash_password(password)
-    # Whole seconds, like a token's iat: a session opened in the same second stays valid.
-    user.password_changed_at = datetime.now(UTC).replace(microsecond=0)
+    user.password_changed_at = datetime.now(UTC)
 
 
 def create_reset_token(db: Session, user: User) -> str:

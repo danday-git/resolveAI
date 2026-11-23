@@ -23,7 +23,8 @@ def create_access_token(user_id: UUID) -> tuple[str, datetime]:
     now = datetime.now(UTC)
     expires = now + timedelta(minutes=settings.jwt_ttl_minutes)
     token = jwt.encode(
-        {"sub": str(user_id), "iat": now, "exp": expires},
+        # iat keeps its fraction: a password change has to end sessions opened in the same second.
+        {"sub": str(user_id), "iat": now.timestamp(), "exp": expires},
         settings.jwt_secret.get_secret_value(),
         algorithm="HS256",
     )

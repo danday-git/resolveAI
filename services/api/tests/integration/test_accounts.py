@@ -140,7 +140,12 @@ def test_change_password_needs_the_current_one(client, auth_headers):
     wrong = {"current_password": "not-the-password", "new_password": "another-long-password"}
     assert client.post("/api/v1/auth/password", headers=auth_headers, json=wrong).status_code == 400
     right = {"current_password": "demo-password-for-tests", "new_password": "another-long-password"}
-    assert client.post("/api/v1/auth/password", headers=auth_headers, json=right).status_code == 200
+    changed = client.post("/api/v1/auth/password", headers=auth_headers, json=right)
+    assert changed.status_code == 200
+    client.cookies.clear()
+    # The session that made the change is seconds old at most, and still ends; the new one works.
+    assert client.get("/api/v1/auth/me", headers=auth_headers).status_code == 401
+    assert client.get("/api/v1/auth/me", headers=bearer(changed)).status_code == 200
 
 
 @pytest.fixture
