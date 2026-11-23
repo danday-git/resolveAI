@@ -16,7 +16,7 @@ from fastapi import APIRouter, Cookie, Depends, Request, Response
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, SecretStr, field_validator
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from app.api.deps import get_current_user, missing_llm_consent
 from app.core.audit import audit
@@ -115,6 +115,9 @@ def _start_session(response: Response, user: User) -> dict:
 def set_password(user: User, password: str) -> None:
     user.password_hash = hash_password(password)
     user.password_changed_at = datetime.now(UTC)
+    # A reset link issued before this change must not be able to undo it.
+    if db := object_session(user):
+        db.query(PasswordResetToken).filter_by(user_id=user.id).delete()
 
 
 def create_reset_token(db: Session, user: User) -> str:
@@ -253,8 +256,7 @@ def confirm_password_reset(
     user = db.get(User, row.user_id) if row else None
     if row is None or user is None or not user.is_active:
         raise ApiError(400, "INVALID_TOKEN", "This reset link is invalid or has expired")
-    row.used_at = datetime.now(UTC)
-    set_password(user, body.new_password.get_secret_value())
+    set_password(user, body.new_password.get_secret_value())  # also deletes the link
     audit(db, request, user, "auth.password_reset", "user", user.id)
     db.commit()
     return {"status": "ok"}

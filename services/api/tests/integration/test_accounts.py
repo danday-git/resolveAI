@@ -139,6 +139,8 @@ def test_reset_request_never_reveals_accounts_and_emails_only_real_ones(client, 
 def test_change_password_needs_the_current_one(client, auth_headers):
     wrong = {"current_password": "not-the-password", "new_password": "another-long-password"}
     assert client.post("/api/v1/auth/password", headers=auth_headers, json=wrong).status_code == 400
+    me = client.get("/api/v1/auth/me", headers=auth_headers).json()["id"]
+    link = client.post(f"/api/v1/admin/users/{me}/reset-link", headers=auth_headers).json()
     right = {"current_password": "demo-password-for-tests", "new_password": "another-long-password"}
     changed = client.post("/api/v1/auth/password", headers=auth_headers, json=right)
     assert changed.status_code == 200
@@ -146,6 +148,9 @@ def test_change_password_needs_the_current_one(client, auth_headers):
     # The session that made the change is seconds old at most, and still ends; the new one works.
     assert client.get("/api/v1/auth/me", headers=auth_headers).status_code == 401
     assert client.get("/api/v1/auth/me", headers=bearer(changed)).status_code == 200
+    # A reset link from before the change cannot replace the new password.
+    stale = {"token": parse_qs(urlparse(link["url"]).query)["token"][0], "new_password": "x" * 20}
+    assert client.post("/api/v1/auth/password-reset/confirm", json=stale).status_code == 400
 
 
 @pytest.fixture
