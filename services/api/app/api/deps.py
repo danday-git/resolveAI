@@ -2,9 +2,10 @@ from uuid import UUID
 
 from fastapi import Cookie, Depends, Header, Request
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from app.core.ai_settings import effective_settings
+from app.core.config import Settings
 from app.core.database import get_db
 from app.core.errors import ApiError
 from app.core.security import decode_access_token
@@ -56,11 +57,16 @@ def require_admin(user: User = Depends(get_current_user)) -> User:
 
 def missing_llm_consent(user: User) -> list[str]:
     """External providers in use that this user has not agreed to send data to."""
-    return effective_settings().missing_llm_consent(user.llm_consent_providers)
+    # Reuse the request's session: a second pool checkout per request can exhaust the pool.
+    return effective_settings(object_session(user)).missing_llm_consent(user.llm_consent_providers)
 
 
-def require_llm_consent(user: User = Depends(get_current_user)) -> User:
-    missing = missing_llm_consent(user)
+def check_llm_consent(user: User, settings: Settings | None = None) -> None:
+    missing = (
+        settings.missing_llm_consent(user.llm_consent_providers)
+        if settings is not None
+        else missing_llm_consent(user)
+    )
     if missing:
         raise ApiError(
             403,
@@ -68,4 +74,8 @@ def require_llm_consent(user: User = Depends(get_current_user)) -> User:
             "Allow sending your data to the external model provider on the Account page first",
             {"providers": missing},
         )
+
+
+def require_llm_consent(user: User = Depends(get_current_user)) -> User:
+    check_llm_consent(user)
     return user

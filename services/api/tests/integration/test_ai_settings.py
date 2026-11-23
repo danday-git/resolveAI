@@ -1,5 +1,6 @@
 from sqlalchemy import select
 
+from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.models import AppSetting, AuditEvent
 
@@ -75,3 +76,28 @@ def test_chat_uses_the_model_the_admin_chose(client, auth_headers):
     )
     tested = client.post("/api/v1/admin/ai/test", headers=auth_headers).json()
     assert tested["ok"] is True and tested["model"] == "mock-picked-by-admin"
+
+
+def switch_to_anthropic(client, auth_headers):
+    body = {"llm_provider": "anthropic", "llm_model": "claude-haiku-4-5", "anthropic_api_key": "k"}
+    assert client.put("/api/v1/admin/ai", headers=auth_headers, json=body).status_code == 200
+
+
+def test_consent_from_a_stale_page_is_refused(client, auth_headers):
+    switch_to_anthropic(client, auth_headers)
+    stale = {"granted": True, "providers": ["openai"]}
+    refused = client.put("/api/v1/auth/llm-consent", headers=auth_headers, json=stale)
+    assert refused.status_code == 409 and refused.json()["error"]["code"] == "PROVIDERS_CHANGED"
+    fresh = {"granted": True, "providers": ["anthropic"]}
+    assert (
+        client.put("/api/v1/auth/llm-consent", headers=auth_headers, json=fresh).status_code == 200
+    )
+
+
+def test_provider_lookup_rechecks_consent_after_a_switch(client, auth_headers, monkeypatch):
+    switch_to_anthropic(client, auth_headers)
+    # The consent check ran just before the switch and saw only the local provider.
+    monkeypatch.setattr("app.api.deps.effective_settings", lambda db=None: get_settings())
+    blocked = client.post("/api/v1/chat", headers=auth_headers, json={"question": "hello there"})
+    assert blocked.status_code == 403
+    assert blocked.json()["error"]["code"] == "LLM_CONSENT_REQUIRED"

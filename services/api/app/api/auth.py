@@ -89,7 +89,7 @@ def _public(user: User) -> dict:
         "id": str(user.id),
         "email": user.email,
         "role": user.role,
-        "external_llm_providers": effective_settings().external_llm_providers,
+        "external_llm_providers": effective_settings(object_session(user)).external_llm_providers,
         "llm_consent_required": bool(missing_llm_consent(user)),
         "llm_consent_at": user.llm_consent_at,
     }
@@ -439,6 +439,8 @@ def me(user: Annotated[User, Depends(get_current_user)]):
 
 class ConsentRequest(BaseModel):
     granted: bool
+    # The providers the user saw on the page; must match the ones in use when granting.
+    providers: list[str] = []
 
 
 @router.put("/llm-consent")
@@ -453,6 +455,13 @@ def set_llm_consent(
     providers = effective_settings(db).external_llm_providers
     if body.granted and not providers:
         raise ApiError(409, "NO_EXTERNAL_PROVIDER", "No external model provider is configured")
+    if body.granted and sorted(body.providers) != sorted(providers):
+        raise ApiError(
+            409,
+            "PROVIDERS_CHANGED",
+            "The model provider changed. Reload the page and review it again",
+            {"providers": providers},
+        )
     user.llm_consent_at = datetime.now(UTC) if body.granted else None
     user.llm_consent_providers = ",".join(providers) if body.granted else None
     action = "consent.llm_granted" if body.granted else "consent.llm_withdrawn"
