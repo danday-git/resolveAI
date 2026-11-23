@@ -12,7 +12,7 @@ Built as a portfolio project to show production-minded AI engineering: grounded 
 |---|---|---|
 | ![Indexed runbooks and SOPs](docs/screenshots/knowledge.png) | ![Observations, possible causes and read-only checks](docs/screenshots/analysis.png) | ![An RCA draft waiting for a reviewer](docs/screenshots/rca.png) |
 
-Screens are from a local run with Ollama (`llama3.2:3b`, `nomic-embed-text-v2-moe`). A one-minute [screen recording](site/demo.mp4) shows the whole flow. A static showcase page lives in [`site/`](site/index.html) and deploys to GitHub Pages with the `pages` workflow.
+Screens are from a local run with Ollama (`llama3.2:3b`, `nomic-embed-text-v2-moe`). A 36-second [screen recording](site/demo.mp4) shows the whole flow. A static showcase page lives in [`site/`](site/index.html) and deploys to GitHub Pages with the `pages` workflow.
 
 ## Features
 
