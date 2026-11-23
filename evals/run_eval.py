@@ -14,6 +14,7 @@ violates must_not_claim), even if aggregate scores look fine (PRD §11).
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import platform
@@ -120,16 +121,35 @@ def load_fixtures(c: Client, fixtures_dir: Path, needed: set[str]) -> dict[str, 
         fixture_id: next(fixtures_dir.glob(f"{fixture_id}.*"))
         for fixture_id in sorted(needed)
     }
+    fixture_data = {fixture_id: path.read_bytes() for fixture_id, path in fixture_paths.items()}
     fixture_names = {path.name for path in fixture_paths.values()}
+    fixture_hashes = {hashlib.sha256(data).hexdigest() for data in fixture_data.values()}
     for doc in list_all(c, "/documents"):
-        if doc["filename"] in fixture_names:
+        if doc["filename"] in fixture_names or doc.get("sha256") in fixture_hashes:
             c.delete(f"/documents/{doc['id']}")
     doc_ids: dict[str, str] = {}
     for fixture_id, path in fixture_paths.items():
-        r = c.post("/documents", files={"file": (path.name, path.read_bytes(), "text/markdown")})
-        if r.status_code != 202:
+        r = c.post(
+            "/documents",
+            files={"file": (path.name, fixture_data[fixture_id], "text/markdown")},
+        )
+        response = r.json()
+        if r.status_code == 202:
+            doc_ids[fixture_id] = response["id"]
+        elif (
+            r.status_code == 409
+            and response.get("error", {}).get("code") == "DUPLICATE_DOCUMENT"
+        ):
+            details = response["error"].get("details") or {}
+            existing_id = details.get("document_id")
+            if not existing_id:
+                raise SystemExit(
+                    f"upload {path.name} failed: duplicate content conflicts with an "
+                    "existing document, but the API did not return its id"
+                )
+            doc_ids[fixture_id] = existing_id
+        else:
             raise SystemExit(f"upload {path.name} failed: {r.status_code} {r.text}")
-        doc_ids[fixture_id] = r.json()["id"]
     deadline = time.time() + 300
     chunk_map: dict[str, str] = {}
     for fixture_id, doc_id in doc_ids.items():
