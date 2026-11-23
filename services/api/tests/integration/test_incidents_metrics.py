@@ -94,6 +94,7 @@ def test_analyze_observations_rca_reset_metrics_and_confirm(client, auth_headers
         },
     )
     assert confirmed.json()["cause_status"] == "CONFIRMED"
+    assert confirmed.json()["reviewer_email"] == "demo@resolveai.local"
     edited = client.patch(
         f"/api/v1/incidents/{incident['id']}/rca",
         headers=auth_headers,
@@ -102,6 +103,7 @@ def test_analyze_observations_rca_reset_metrics_and_confirm(client, auth_headers
     assert edited.json()["cause_status"] == "UNCONFIRMED"
     assert edited.json()["body_json"]["confirmed_cause"] == body["confirmed_cause"]
     assert edited.json()["reviewer_id"] is None
+    assert edited.json()["reviewer_email"] is None
     summary = client.get("/api/v1/metrics/summary", headers=auth_headers).json()
     assert summary["llm"]["calls"] >= 2
     assert summary["ingestion"]["documents_total"] >= 0

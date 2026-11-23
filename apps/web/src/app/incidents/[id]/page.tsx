@@ -168,6 +168,20 @@ function AnalysisView({ a }: { a: Analysis }) {
 
 const lines = (xs: string[]) => xs.join("\n");
 const unlines = (s: string) => s.split("\n").map((x) => x.trim()).filter(Boolean);
+const timelineText = (items: RcaBody["timeline"]) =>
+  lines(items.map((t) => `${t.time ?? ""} | ${t.event} | ${t.source}`));
+const parseTimeline = (value: string): RcaBody["timeline"] =>
+  unlines(value).map((line) => {
+    const [time, event = "", source = ""] = line.split("|").map((x) => x.trim());
+    return { time: time || null, event, source };
+  });
+const evidenceText = (items: RcaBody["evidence_appendix"]) =>
+  lines(items.map((item) => `${item.ref} | ${item.excerpt}`));
+const parseEvidence = (value: string): RcaBody["evidence_appendix"] =>
+  unlines(value).map((line) => {
+    const [ref, ...rest] = line.split("|");
+    return { ref: ref.trim(), excerpt: rest.join("|").trim() };
+  });
 
 function RcaEditor({
   incidentId,
@@ -183,6 +197,12 @@ function RcaEditor({
   run: (label: string, fn: () => Promise<unknown>) => Promise<void>;
 }) {
   const [body, setBody] = useState<RcaBody | null>(rca?.body_json ?? null);
+  const [timelineValue, setTimelineValue] = useState(() =>
+    rca ? timelineText(rca.body_json.timeline) : "",
+  );
+  const [evidenceValue, setEvidenceValue] = useState(() =>
+    rca ? evidenceText(rca.body_json.evidence_appendix) : "",
+  );
   const [ack, setAck] = useState(false);
 
   const generate = (
@@ -210,8 +230,21 @@ function RcaEditor({
       <textarea className={input} rows={3} value={lines(body[k])} onChange={(e) => setBody({ ...body, [k]: unlines(e.target.value) })} />
     </label>
   );
-  const dirty = JSON.stringify(body) !== JSON.stringify(rca.body_json);
-  const canConfirm = ack && !dirty && body.confirmed_cause.trim() !== "" && body.evidence_appendix.length > 0;
+  const bodyFields = { ...body, timeline: undefined, evidence_appendix: undefined };
+  const originalFields = {
+    ...rca.body_json,
+    timeline: undefined,
+    evidence_appendix: undefined,
+  };
+  const dirty =
+    JSON.stringify(bodyFields) !== JSON.stringify(originalFields) ||
+    timelineValue !== timelineText(rca.body_json.timeline) ||
+    evidenceValue !== evidenceText(rca.body_json.evidence_appendix);
+  const canConfirm =
+    ack &&
+    !dirty &&
+    body.confirmed_cause.trim() !== "" &&
+    parseEvidence(evidenceValue).length > 0;
 
   return (
     <Card
@@ -228,7 +261,9 @@ function RcaEditor({
       <div className="space-y-3">
         <p className="flex items-center gap-2 text-xs text-slate-500">
           <AiLabel /> Draft generated from analysis; edit freely. A cause is only CONFIRMED by explicit reviewer acknowledgement below.
-          {rca.reviewed_at && ` Reviewed ${new Date(rca.reviewed_at).toLocaleString()}.`}
+          {rca.reviewed_at &&
+            rca.reviewer_email &&
+            ` Reviewed by ${rca.reviewer_email} at ${new Date(rca.reviewed_at).toLocaleString()}.`}
         </p>
         {text("incident_summary", "Incident summary")}
         {text("customer_impact", "Customer impact", 2)}
@@ -237,16 +272,8 @@ function RcaEditor({
           <textarea
             className={`${input} font-mono text-xs`}
             rows={4}
-            value={lines(body.timeline.map((t) => `${t.time ?? ""} | ${t.event} | ${t.source}`))}
-            onChange={(e) =>
-              setBody({
-                ...body,
-                timeline: unlines(e.target.value).map((l) => {
-                  const [time, event = "", source = ""] = l.split("|").map((x) => x.trim());
-                  return { time: time || null, event, source };
-                }),
-              })
-            }
+            value={timelineValue}
+            onChange={(e) => setTimelineValue(e.target.value)}
           />
         </label>
         {text("detection", "Detection", 2)}
@@ -260,20 +287,26 @@ function RcaEditor({
           <textarea
             className={`${input} font-mono text-xs`}
             rows={4}
-            value={lines(body.evidence_appendix.map((x) => `${x.ref} | ${x.excerpt}`))}
-            onChange={(e) =>
-              setBody({
-                ...body,
-                evidence_appendix: unlines(e.target.value).map((l) => {
-                  const [ref, ...rest] = l.split("|");
-                  return { ref: ref.trim(), excerpt: rest.join("|").trim() };
-                }),
-              })
-            }
+            value={evidenceValue}
+            onChange={(e) => setEvidenceValue(e.target.value)}
           />
         </label>
         <div className="flex flex-wrap items-center gap-2">
-          <button className={button} disabled={!dirty || !!busy} onClick={() => run("save", () => patch(`/incidents/${incidentId}/rca`, { body_json: body }))}>
+          <button
+            className={button}
+            disabled={!dirty || !!busy}
+            onClick={() =>
+              run("save", () =>
+                patch(`/incidents/${incidentId}/rca`, {
+                  body_json: {
+                    ...body,
+                    timeline: parseTimeline(timelineValue),
+                    evidence_appendix: parseEvidence(evidenceValue),
+                  },
+                }),
+              )
+            }
+          >
             {busy === "save" ? "Saving…" : "Save draft"}
           </button>
           {dirty && <span className="text-xs text-amber-700">Unsaved changes{rca.cause_status === "CONFIRMED" && " — saving resets the review to UNCONFIRMED"}</span>}

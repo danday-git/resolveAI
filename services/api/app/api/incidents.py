@@ -108,6 +108,7 @@ def _analysis_json(analysis: Analysis) -> dict:
 
 
 def _rca_json(report: RCAReport, db: Session) -> dict:
+    reviewer = db.get(User, report.reviewer_id) if report.reviewer_id else None
     return {
         "id": str(report.id),
         "incident_id": str(report.incident_id),
@@ -116,6 +117,7 @@ def _rca_json(report: RCAReport, db: Session) -> dict:
         "status": report.status,
         "cause_status": report.cause_status,
         "reviewer_id": str(report.reviewer_id) if report.reviewer_id else None,
+        "reviewer_email": reviewer.email if reviewer else None,
         "reviewed_at": report.reviewed_at,
         "audit_json": report.audit_json,
         "created_at": report.created_at,

@@ -128,6 +128,7 @@ export type Rca = {
   status: "DRAFT" | "REVIEWED";
   cause_status: "UNCONFIRMED" | "CONFIRMED";
   reviewer_id: string | null;
+  reviewer_email: string | null;
   reviewed_at: string | null;
   updated_at: string;
 };
