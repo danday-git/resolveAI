@@ -2,6 +2,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 from alembic import op
+from app.core.config import get_settings
 
 revision = "0002_auth_audit"
 down_revision = "0001_initial"
@@ -18,10 +19,12 @@ def upgrade() -> None:
     )
     op.add_column("users", sa.Column("password_changed_at", sa.DateTime(timezone=True)))
     op.add_column("users", sa.Column("oidc_subject", sa.String(400), unique=True))
-    # An existing install has only the seeded demo user; without an admin nobody could manage users.
+    # An existing install has no administrator yet: its seeded account becomes one. Not the
+    # oldest account, which can be the eval runner's. If the seed has not run, it adds the admin.
     op.execute(
-        "UPDATE users SET role = 'admin' "
-        "WHERE id = (SELECT id FROM users ORDER BY created_at LIMIT 1)"
+        sa.text("UPDATE users SET role = 'admin' WHERE email = :email").bindparams(
+            email=get_settings().demo_user_email.lower()
+        )
     )
     op.create_table(
         "password_reset_tokens",
