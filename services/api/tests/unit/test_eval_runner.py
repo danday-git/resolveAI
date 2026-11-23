@@ -55,9 +55,7 @@ class DuplicateClient(FakeClient):
         if path == "/documents/renamed-document":
             return FakeResponse({"status": "ready"})
         if path == "/documents/renamed-document/chunks":
-            return FakeResponse(
-                {"items": [{"id": "existing-chunk", "chunk_index": 0}], "total": 1}
-            )
+            return FakeResponse({"items": [{"id": "existing-chunk", "chunk_index": 0}], "total": 1})
         raise AssertionError(f"Unexpected GET {path}")
 
     def post(self, path: str, **kwargs: Any) -> FakeResponse:

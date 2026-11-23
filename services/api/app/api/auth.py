@@ -53,9 +53,7 @@ def _check_login_limit(key: str) -> None:
         if not rate_limited:
             recent.append(now)
             _attempts[key] = recent
-        if len(_attempts) > 10_000 and (
-            _last_prune is None or now - _last_prune >= 60
-        ):
+        if len(_attempts) > 10_000 and (_last_prune is None or now - _last_prune >= 60):
             _last_prune = now
             for attempt_key, stamps in list(_attempts.items()):
                 if not any(now - stamp < 60 for stamp in stamps):
