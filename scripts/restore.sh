@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Restores a backup made by scripts/backup.sh into a running Compose stack.
+# Restores a backup made by scripts/backup.sh into a running Compose stack. The API and the
+# worker are stopped while it runs.
 #   scripts/restore.sh backups/resolveai-<stamp>.dump
 # This REPLACES the current database and uploaded files.
 set -euo pipefail
@@ -14,15 +15,17 @@ if [ "${RESTORE_CONFIRM:-}" != "yes" ]; then
 	[ "$answer" = "yes" ] || { echo "cancelled"; exit 1; }
 fi
 
-# The worker must not ingest while the tables are being replaced.
-"${compose[@]}" stop worker
-"${compose[@]}" exec -T db pg_restore -U resolveai -d resolveai --clean --if-exists \
-	--no-owner --single-transaction <"$dump"
+# Nothing may read or write while the data is replaced: an upload accepted in between would
+# keep its database row and lose its file. Both come back however the restore ends.
+"${compose[@]}" stop api worker
+trap '"${compose[@]}" start api worker' EXIT
+db() { "${compose[@]}" exec -T db "$@"; }
+db pg_restore -U resolveai -d resolveai --clean --if-exists --no-owner --single-transaction <"$dump"
+run=("${compose[@]}" run --rm --no-deps -T api)
 if [ -f "$uploads" ]; then
-	"${compose[@]}" exec -T api sh -c 'rm -rf /data/uploads/* && tar -C /data/uploads -xzf -' <"$uploads"
+	"${run[@]}" sh -c 'find /data/uploads -mindepth 1 -delete && tar -C /data/uploads -xzf -' <"$uploads"
 else
 	echo "warning: $uploads not found, uploaded files were not restored" >&2
 fi
-"${compose[@]}" exec -T api alembic upgrade head
-"${compose[@]}" start worker
+"${run[@]}" alembic upgrade head
 echo "restored $(basename "$dump")"

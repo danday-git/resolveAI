@@ -61,7 +61,8 @@ scripts/restore.sh /var/backups/resolveai/resolveai-<stamp>.dump
 ```
 
 `backup.sh` keeps the newest 14 backups (`BACKUP_KEEP`). `restore.sh` replaces the current
-database and uploads, and asks for confirmation first. Schedule the backup from cron, for
+database and uploads, and asks for confirmation first. It stops the API and the worker while it
+runs, so the application is unavailable for that time. Schedule the backup from cron, for
 example `15 2 * * * cd /opt/resolveai && COMPOSE_ARGS="..." scripts/backup.sh /var/backups/resolveai`,
 and copy the directory to another machine: a backup on the same disk does not survive losing
 the host. Restore into a test stack from time to time to prove the backups work.
