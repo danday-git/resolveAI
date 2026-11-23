@@ -132,6 +132,11 @@ def test_reset_request_never_reveals_accounts_and_emails_only_real_ones(client, 
         response = client.post("/api/v1/auth/password-reset/request", json={"email": email})
         assert response.status_code == 202
     assert [to for to, _ in sent] == ["demo@resolveai.local"]
+    # Delivery runs after the response, so a slow relay cannot give a real account away.
+    queued = []
+    monkeypatch.setattr(auth.BackgroundTasks, "add_task", lambda self, *args: queued.append(args))
+    client.post("/api/v1/auth/password-reset/request", json={"email": "demo@resolveai.local"})
+    assert len(sent) == 1 and queued[0][1] == "demo@resolveai.local"
     with SessionLocal() as db:  # the link itself is never written to the audit trail
         events = db.scalars(select(AuditEvent)).all()
         assert "token" not in json.dumps([e.detail for e in events])

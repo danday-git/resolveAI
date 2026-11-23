@@ -12,7 +12,7 @@ from urllib.parse import urlencode
 import httpx
 import jwt
 from email_validator import EmailNotValidError, validate_email
-from fastapi import APIRouter, Cookie, Depends, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Cookie, Depends, Request, Response
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, SecretStr, field_validator
 from sqlalchemy import select
@@ -222,9 +222,19 @@ def _send_reset_email(to: str, url: str) -> None:
         smtp.send_message(message)
 
 
+def _deliver_reset_email(to: str, url: str) -> None:
+    try:
+        _send_reset_email(to, url)
+    except (OSError, smtplib.SMTPException):
+        logger.warning("password reset email could not be sent")
+
+
 @router.post("/password-reset/request", status_code=202)
 def request_password_reset(
-    body: EmailRequest, request: Request, db: Annotated[Session, Depends(get_db)]
+    body: EmailRequest,
+    request: Request,
+    background: BackgroundTasks,
+    db: Annotated[Session, Depends(get_db)],
 ):
     """Always 202, so the response does not reveal whether the email has an account."""
     rate_limit(f"reset:{_client(request)}", request, 5)
@@ -234,10 +244,8 @@ def request_password_reset(
         url = create_reset_token(db, user)
         audit(db, request, user, "auth.password_reset_requested", "user", user.id)
         db.commit()
-        try:
-            _send_reset_email(user.email, url)
-        except (OSError, smtplib.SMTPException):
-            logger.warning("password reset email could not be sent")
+        # After the response: waiting on the relay would tell real accounts from unknown ones.
+        background.add_task(_deliver_reset_email, user.email, url)
     return {"status": "accepted"}
 
 
