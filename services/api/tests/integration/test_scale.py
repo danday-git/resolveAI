@@ -1,8 +1,10 @@
+import time
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 from starlette.requests import Request
 
+from app.core.database import engine
 from app.core.errors import ApiError
 from app.core.limits import rate_limit
 
@@ -25,6 +27,19 @@ def test_rate_limit_is_shared_and_exact_under_concurrency(clean_database):
         allowed = sum(pool.map(hit, range(20)))
     assert allowed == 5
     rate_limit("another-key", request(), 5)
+
+
+def test_rate_limit_does_not_wait_for_the_request_connection_pool(clean_database):
+    # Every connection of the main pool is held by a request, as under a burst of traffic.
+    # 15 is SQLAlchemy's default pool_size 5 plus max_overflow 10.
+    held = [engine.connect() for _ in range(15)]
+    try:
+        started = time.monotonic()
+        rate_limit("burst", request(), 5)
+        assert time.monotonic() - started < 5
+    finally:
+        for connection in held:
+            connection.close()
 
 
 def test_rate_limited_request_reports_when_to_retry(clean_database):

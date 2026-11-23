@@ -7,9 +7,13 @@ from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.core.database import engine
+from app.core.database import make_engine
 from app.core.errors import ApiError
 from app.models import LLMRequest, User
+
+# Its own pool: a request already holds a connection from the main one when it is counted,
+# so sharing it lets a burst of requests each wait for a second connection that never frees.
+engine = make_engine(pool_size=2, max_overflow=3)
 
 
 def rate_limit(key: str, request: Request, limit: int | None = None) -> None:
