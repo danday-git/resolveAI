@@ -14,7 +14,7 @@ export type MetricsSummary = {
     p95_ms: number | null;
     input_tokens: number;
     output_tokens: number;
-    estimated_cost_usd: number;
+    estimated_cost_usd: number | null;
     by_provider_model: { provider: string; model: string; calls: number; input_tokens: number; output_tokens: number; estimated_cost_usd: number | null }[];
     by_day: { date: string; calls: number; tokens: number; estimated_cost_usd: number | null }[];
   };
@@ -59,7 +59,9 @@ export default function Metrics() {
           ["LLM tokens (in/out)", `${m.llm.input_tokens} / ${m.llm.output_tokens}`],
           ["LLM calls", m.llm.calls],
           ["LLM p95", ms(m.llm.p95_ms)],
-          ["Estimated cost", `$${m.llm.estimated_cost_usd.toFixed(4)} (estimate)`],
+          ["Estimated cost", m.llm.estimated_cost_usd === null
+            ? "unknown"
+            : `$${m.llm.estimated_cost_usd.toFixed(4)} (estimate)`],
           ["Ingestion failures", `${m.ingestion.failed} / ${m.ingestion.documents_total}`],
         ].map(([k, v]) => (
           <Card key={k as string}>
@@ -86,7 +88,9 @@ export default function Metrics() {
                 <li key={d.date} className="grid grid-cols-[90px_1fr_120px] items-center gap-2">
                   <span>{d.date}</span>
                   <span className="h-3 rounded bg-slate-700" style={{ width: `${(d.tokens / maxTokens) * 100}%` }} />
-                  <span className="text-right">{d.tokens} tok · ${(d.estimated_cost_usd ?? 0).toFixed(4)}</span>
+                  <span className="text-right">
+                    {d.tokens} tok · {d.estimated_cost_usd === null ? "unknown" : `$${d.estimated_cost_usd.toFixed(4)}`}
+                  </span>
                 </li>
               ))}
             </ul>

@@ -71,7 +71,12 @@ export default function Overview() {
               <dt>Requests</dt><dd className="text-right font-semibold">{metrics.requests.total}</dd>
               <dt>Error rate</dt><dd className="text-right font-semibold">{(metrics.requests.error_rate * 100).toFixed(1)}%</dd>
               <dt>LLM calls</dt><dd className="text-right font-semibold">{metrics.llm.calls}</dd>
-              <dt>Est. cost</dt><dd className="text-right font-semibold">${metrics.llm.estimated_cost_usd.toFixed(4)}</dd>
+              <dt>Est. cost</dt>
+              <dd className="text-right font-semibold">
+                {metrics.llm.estimated_cost_usd === null
+                  ? "unknown"
+                  : `$${metrics.llm.estimated_cost_usd.toFixed(4)}`}
+              </dd>
             </dl>
           )}
         </Card>
