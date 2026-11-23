@@ -61,8 +61,8 @@ def redact(text: str) -> tuple[str, dict[str, int]]:
     )
     text = replace(_JWT, "[REDACTED_JWT]", "jwt", text)
     text = replace(_EMAIL, "[EMAIL]", "email", text)
-    text = _IP.sub(lambda match: _redact_public_ip(match, summary), text)
     text = _URL.sub(lambda match: _strip_url_credentials(match, summary), text)
+    text = _IP.sub(lambda match: _redact_public_ip(match, summary), text)
     return text, summary
 
 

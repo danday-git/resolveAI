@@ -59,6 +59,16 @@ def test_redacts_quoted_json_credentials_and_preserves_quotes():
     assert summary["secret"] == 3
 
 
+def test_strips_url_credentials_before_masking_public_ip():
+    clean, summary = redact("postgres://u:pw@203.0.113.5:5432/db")
+
+    assert "u:pw" not in clean
+    assert "203.0.113.5" not in clean
+    assert "postgres://[IP]:5432/db" == clean
+    assert summary["url_credentials"] == 1
+    assert summary["public_ip"] == 1
+
+
 def test_private_key_and_injection():
     clean, summary = redact("-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----")
     assert "key" not in clean
