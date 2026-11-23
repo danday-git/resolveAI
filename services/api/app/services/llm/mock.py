@@ -281,11 +281,11 @@ class MockChatProvider(ChatProvider):
         upstream_port = None
         upstream_health_url = None
         for excerpt in excerpts:
-            match = re.search(r'\bupstream:\s*"(https?://[^"\s]+)"', excerpt, re.I)
-            if not match:
+            upstream_match = re.search(r'\bupstream:\s*"(https?://[^"\s]+)"', excerpt, re.I)
+            if not upstream_match:
                 continue
             try:
-                parsed = urlsplit(match.group(1))
+                parsed = urlsplit(upstream_match.group(1))
                 hostname = parsed.hostname
                 port = parsed.port or (443 if parsed.scheme == "https" else 80)
             except ValueError:
