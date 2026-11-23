@@ -214,8 +214,10 @@ def _send_reset_email(to: str, url: str) -> None:
         "If you did not ask for it, ignore this email."
     )
     with smtplib.SMTP(settings.smtp_host or "", settings.smtp_port, timeout=10) as smtp:
+        # The link is a credential: never send it in the clear, with or without a login.
+        # shortcut: no opt-out for a relay without STARTTLS, add one if a local relay needs it.
+        smtp.starttls()
         if settings.smtp_user and settings.smtp_password:
-            smtp.starttls()
             smtp.login(settings.smtp_user, settings.smtp_password.get_secret_value())
         smtp.send_message(message)
 

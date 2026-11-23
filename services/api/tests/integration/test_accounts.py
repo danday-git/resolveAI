@@ -1,4 +1,5 @@
 import json
+import smtplib
 from datetime import UTC, datetime, timedelta
 from urllib.parse import parse_qs, urlparse
 
@@ -134,6 +135,37 @@ def test_reset_request_never_reveals_accounts_and_emails_only_real_ones(client, 
     with SessionLocal() as db:  # the link itself is never written to the audit trail
         events = db.scalars(select(AuditEvent)).all()
         assert "token" not in json.dumps([e.detail for e in events])
+
+
+def test_reset_email_is_never_sent_without_tls(monkeypatch):
+    calls = []
+
+    class Relay:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def starttls(self):
+            calls.append("starttls")
+            if not self.tls:
+                raise smtplib.SMTPNotSupportedError("STARTTLS extension not supported")
+
+        def send_message(self, message):
+            calls.append("send")
+
+    monkeypatch.setattr(smtplib, "SMTP", Relay)
+    Relay.tls = True  # a relay without credentials still gets TLS first
+    auth._send_reset_email("a@example.com", "https://app.test/reset?token=t")
+    assert calls == ["starttls", "send"]
+    Relay.tls = False
+    with pytest.raises(smtplib.SMTPException):
+        auth._send_reset_email("a@example.com", "https://app.test/reset?token=t")
+    assert calls == ["starttls", "send", "starttls"]
 
 
 def test_change_password_needs_the_current_one(client, auth_headers):
