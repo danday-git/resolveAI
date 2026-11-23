@@ -39,6 +39,81 @@ _STOPWORDS = {
     "with",
 }
 
+_ANALYSIS_HYPOTHESES = {
+    "connection_refused": (
+        "Upstream service not listening on proxy_pass port",
+        "The upstream refused the connection, which can occur when no service is accepting "
+        "connections on the configured address and port.",
+        "ss -ltnp | grep 3000",
+        "A process is listening on the configured upstream port.",
+        "A missing listener supports, but does not confirm, this hypothesis.",
+    ),
+    "upstream_address": (
+        "Proxy upstream address may not match the backend listener",
+        "The logged upstream address should be compared with the backend's configured listener.",
+        "nginx -T",
+        "The configured proxy_pass address and port match the intended backend.",
+        "A mismatch supports, but does not confirm, this hypothesis.",
+    ),
+    "service_inactive": (
+        "Backend service process stopped or crashed",
+        "The service may be inactive or failed, leaving the proxy without a healthy backend.",
+        "systemctl status app-backend",
+        "The backend service is active and has not recently failed.",
+        "An inactive or failed service supports, but does not confirm, this hypothesis.",
+    ),
+    "timeout": (
+        "Upstream slow or overloaded",
+        "The upstream may be taking too long to respond or may be under heavy load.",
+        "curl -sS http://127.0.0.1:3000/health",
+        "The health endpoint responds promptly with a healthy status.",
+        "A slow or failed response supports, but does not confirm, this hypothesis.",
+    ),
+    "http_5xx": (
+        "Backend is returning server errors",
+        "The observed HTTP 5xx status may indicate that the backend is failing requests.",
+        "curl -sS -I http://127.0.0.1:3000/health",
+        "The health endpoint returns a successful HTTP status.",
+        "A server-error response supports, but does not confirm, this hypothesis.",
+    ),
+    "no_live_upstreams": (
+        "Nginx has no healthy upstreams available",
+        "The proxy may have marked all configured upstream servers unavailable.",
+        "nginx -t",
+        "The Nginx configuration is valid and its upstream definitions are present.",
+        "Missing or invalid upstream configuration supports, but does not confirm, "
+        "this hypothesis.",
+    ),
+    "dns": (
+        "Upstream hostname is not resolving",
+        "The configured upstream hostname may not resolve to the intended backend.",
+        "getent hosts app-backend",
+        "The upstream hostname resolves to the expected address.",
+        "A missing or unexpected address supports, but does not confirm, this hypothesis.",
+    ),
+    "certificate": (
+        "Upstream TLS certificate may be invalid or expired",
+        "The upstream certificate may be expired, untrusted, or mismatched for its hostname.",
+        "curl -sS -I https://app-backend/health",
+        "The TLS connection succeeds with a valid certificate.",
+        "A TLS validation error supports, but does not confirm, this hypothesis.",
+    ),
+    "disk_full": (
+        "Host storage may be exhausted",
+        "The disk-full signal may prevent the backend from writing required files.",
+        "df -h",
+        "Relevant filesystems have available capacity.",
+        "A full filesystem supports, but does not confirm, this hypothesis.",
+    ),
+    "oom": (
+        "Backend may have been terminated by memory pressure",
+        "The kernel may have killed a backend process after memory exhaustion.",
+        "journalctl -k --since '1 hour ago'",
+        "There are no recent out-of-memory kill records for the backend.",
+        "A matching kill record supports, but does not confirm, this hypothesis.",
+    ),
+}
+
 
 class MockEmbeddingProvider(EmbeddingProvider):
     name = "mock"
@@ -127,7 +202,8 @@ class MockChatProvider(ChatProvider):
             for token in re.findall(r"[a-z0-9_.:/-]+", question.lower())
             if token not in _STOPWORDS
         }
-        best: tuple[int, str, str] = (0, "", "")
+        candidates: list[tuple[int, int, str, str]] = []
+        order = 0
         for match in re.finditer(r'<chunk id="([^"]+)"([^>]*)>(.*?)</chunk>', user, re.DOTALL):
             chunk_id, attrs, content = match.groups()
             flagged = 'flagged="true"' in attrs
@@ -136,44 +212,70 @@ class MockChatProvider(ChatProvider):
 
                 if detect_injection(content):
                     continue
-            for sentence in re.split(r"(?<=[.!?])\s+|\n+", content.strip()):
-                sentence = sentence.strip()
-                if not sentence or sentence.startswith("Knowledge-base"):
+            for line in content.splitlines():
+                if re.match(r"\s*#{1,6}(?:\s|$)", line):
                     continue
-                terms = {
-                    token
-                    for token in re.findall(r"[a-z0-9_.:/-]+", sentence.lower())
-                    if token not in _STOPWORDS
-                }
-                score = len(question_tokens & terms)
-                if score > best[0]:
-                    best = (score, chunk_id, sentence)
-        if best[0] < 2 or len(best[2]) < 8:
+                for sentence in re.split(r"(?<=[.!?])\s+", line.strip()):
+                    sentence = sentence.strip()
+                    if not sentence or sentence.startswith("Knowledge-base"):
+                        continue
+                    terms = {
+                        token
+                        for token in re.findall(r"[a-z0-9_.:/-]+", sentence.lower())
+                        if token not in _STOPWORDS
+                    }
+                    score = len(question_tokens & terms)
+                    if score and len(sentence) >= 8:
+                        candidates.append((score, order, chunk_id, sentence))
+                    order += 1
+        selected = sorted(candidates, key=lambda item: (-item[0], item[1]))[:2]
+        if not selected or selected[0][0] < 2:
             return {"answer": "", "abstain": True, "citations": []}
         return {
-            "answer": best[2],
+            "answer": "\n".join(item[3] for item in selected),
             "abstain": False,
-            "citations": [{"chunk_id": best[1], "quote": best[2][:200]}],
+            "citations": [
+                {"chunk_id": chunk_id, "quote": sentence[:200]}
+                for _, _, chunk_id, sentence in selected
+            ],
         }
 
     def _analysis(self, user: str) -> dict[str, object]:
         observations = []
+        grouped: dict[str, list[str]] = {}
+        aliases = {
+            "nginx_connection_refused": "connection_refused",
+            "upstream_timeout": "timeout",
+            "systemd_inactive": "service_inactive",
+        }
         for match in re.finditer(
-            r'<observation id="([^"]+)"[^>]*>(.*?)</observation>', user, re.DOTALL
+            r'<observation id="([^"]+)"[^>]*category="([^"]*)"[^>]*>(.*?)</observation>',
+            user,
+            re.DOTALL,
         ):
+            observation_id, raw_categories, _ = match.groups()
             observations.append(
-                {"id": match.group(1), "interpretation": "Observed in provided evidence."}
+                {"id": observation_id, "interpretation": "Observed in provided evidence."}
             )
+            for raw_category in raw_categories.split(","):
+                category = aliases.get(raw_category.strip(), raw_category.strip())
+                if category in _ANALYSIS_HYPOTHESES:
+                    evidence = grouped.setdefault(category, [])
+                    if observation_id not in evidence:
+                        evidence.append(observation_id)
         hypotheses = []
         steps = []
-        for index, observation in enumerate(observations, 1):
+        for index, (category, evidence) in enumerate(list(grouped.items())[:3], 1):
             hypothesis_id = f"hyp-{index}"
+            title, explanation, command, expected_result, interpretation = _ANALYSIS_HYPOTHESES[
+                category
+            ]
             hypotheses.append(
                 {
                     "id": hypothesis_id,
-                    "title": "Potential issue indicated by the observation",
-                    "explanation": "This is a suspected cause and requires verification.",
-                    "supporting_evidence": [observation["id"]],
+                    "title": title,
+                    "explanation": explanation,
+                    "supporting_evidence": evidence,
                     "contradicting_evidence": [],
                     "confidence": "medium",
                     "status": "suspected",
@@ -183,14 +285,10 @@ class MockChatProvider(ChatProvider):
                 {
                     "id": f"chk-{index}",
                     "hypothesis_id": hypothesis_id,
-                    "command_or_check": (
-                        "Inspect service status and listening sockets using read-only checks."
-                    ),
+                    "command_or_check": command,
                     "read_only": True,
-                    "expected_result": "The service is active and the expected port is listening.",
-                    "interpretation": (
-                        "A missing listener supports, but does not confirm, this hypothesis."
-                    ),
+                    "expected_result": expected_result,
+                    "interpretation": interpretation,
                 }
             )
         return {

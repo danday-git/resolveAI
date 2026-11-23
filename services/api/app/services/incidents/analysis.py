@@ -60,17 +60,19 @@ def extract_observations(sanitized_log: str | None, symptoms: str) -> list[dict[
     found: list[dict[str, Any]] = []
     for source, content in (("log", sanitized_log or ""), ("symptoms", symptoms)):
         for line_number, line in enumerate(content.splitlines(), 1):
-            for category, pattern in _OBSERVATION_PATTERNS:
-                if pattern.search(line):
-                    found.append(
-                        {
-                            "id": f"obs-{len(found) + 1}",
-                            "source": source,
-                            "line_number": line_number if source == "log" else None,
-                            "excerpt": line[:300],
-                            "category": category,
-                        }
-                    )
+            categories = [
+                category for category, pattern in _OBSERVATION_PATTERNS if pattern.search(line)
+            ]
+            if categories:
+                found.append(
+                    {
+                        "id": f"obs-{len(found) + 1}",
+                        "source": source,
+                        "line_number": line_number if source == "log" else None,
+                        "excerpt": line[:300],
+                        "category": ", ".join(categories),
+                    }
+                )
     return found
 
 

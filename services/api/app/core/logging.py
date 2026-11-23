@@ -34,7 +34,11 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             return response
         finally:
             duration = int((time.perf_counter() - started) * 1000)
-            route = getattr(request.scope.get("route"), "path", request.url.path)
+            request_path = request.url.path
+            route_path = getattr(request.scope.get("route"), "path", None)
+            route = route_path if isinstance(route_path, str) else request_path
+            if request_path.startswith("/api/v1") and not route.startswith("/api/v1"):
+                route = f"/api/v1{route}"
             status = response.status_code if response is not None else 500
             logger.info(
                 json.dumps(
@@ -54,7 +58,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                     }
                 )
             )
-            if route.startswith("/api/v1"):
+            if request_path.startswith("/api/v1"):
                 try:
                     with SessionLocal() as db:
                         db.add(

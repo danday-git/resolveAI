@@ -14,7 +14,7 @@ from app.services.llm.base import (
 )
 from app.services.llm.factory import get_embedding_provider
 from app.services.llm.http import post_json
-from app.services.llm.mock import MockEmbeddingProvider
+from app.services.llm.mock import MockChatProvider, MockEmbeddingProvider
 from app.services.llm.ollama import OllamaChatProvider, OllamaEmbeddingProvider
 from app.services.llm.openai import OpenAIChatProvider, OpenAIEmbeddingProvider
 from app.services.llm.pricing import estimate_cost
@@ -26,6 +26,76 @@ def test_mock_embedding_is_deterministic_and_normalized():
     assert result.vectors == provider.embed(["upstream connection refused"]).vectors
     assert len(result.vectors[0]) == 256
     assert sum(value * value for value in result.vectors[0]) == pytest.approx(1)
+
+
+def test_mock_chat_selects_relevant_verbatim_sentences_and_skips_headings():
+    provider = MockChatProvider()
+    result = provider.chat(
+        [
+            ChatMessage("system", "TASK: grounded_qa"),
+            ChatMessage(
+                "user",
+                '<chunk id="doc-1" source="runbook.md" page="1" flagged="false">\n'
+                "# Upstream connection refused\n"
+                "The upstream connection refused error means the service is not listening "
+                "on port 3000.\n"
+                "Check ss -ltnp | grep 3000 to confirm the expected port is open.\n"
+                "</chunk>\n"
+                '<chunk id="doc-2" source="other.md" page="1" flagged="false">\n'
+                "# What does an upstream connection refused error mean?\n"
+                "</chunk>\n"
+                "<question>What does an upstream connection refused error mean and what "
+                "should I check?</question>",
+            ),
+        ]
+    )
+    answer = json.loads(result.text)
+    expected = [
+        "The upstream connection refused error means the service is not listening on port 3000.",
+        "Check ss -ltnp | grep 3000 to confirm the expected port is open.",
+    ]
+
+    assert answer["abstain"] is False
+    assert answer["answer"] == "\n".join(expected)
+    assert all("#" not in citation["quote"] for citation in answer["citations"])
+    assert [item["quote"] for item in answer["citations"]] == expected
+
+
+def test_mock_analysis_groups_categories_and_caps_distinct_read_only_checks():
+    provider = MockChatProvider()
+    result = provider.chat(
+        [
+            ChatMessage("system", "TASK: incident_analysis"),
+            ChatMessage(
+                "user",
+                '<observation id="obs-1" source="log" '
+                'category="connection_refused, upstream_address">refused</observation>\n'
+                '<observation id="obs-2" source="log" '
+                'category="connection_refused">refused again</observation>\n'
+                '<observation id="obs-3" source="log" '
+                'category="service_inactive">inactive</observation>\n'
+                '<observation id="obs-4" source="log" '
+                'category="timeout">timed out</observation>',
+            ),
+        ]
+    )
+    analysis = json.loads(result.text)
+    hypotheses = analysis["hypotheses"]
+    commands = [step["command_or_check"] for step in analysis["verification_steps"]]
+
+    assert len(hypotheses) == 3
+    assert hypotheses[0]["title"] == "Upstream service not listening on proxy_pass port"
+    assert hypotheses[0]["supporting_evidence"] == ["obs-1", "obs-2"]
+    assert hypotheses[1]["supporting_evidence"] == ["obs-1"]
+    assert hypotheses[2]["title"] == "Backend service process stopped or crashed"
+    assert all(item["status"] == "suspected" for item in hypotheses)
+    assert commands == [
+        "ss -ltnp | grep 3000",
+        "nginx -T",
+        "systemctl status app-backend",
+    ]
+    assert len(commands) == len(set(commands))
+    assert all(step["read_only"] for step in analysis["verification_steps"])
 
 
 def test_openai_request_shapes_and_usage():
