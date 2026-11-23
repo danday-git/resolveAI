@@ -25,7 +25,8 @@ from app.core.database import get_db
 from app.core.errors import ApiError
 from app.core.limits import rate_limit
 from app.core.security import create_access_token, hash_password, verify_password
-from app.models import PasswordResetToken, User
+from app.models import Document, DocumentStatus, PasswordResetToken, User
+from app.services.ingestion.pipeline import ingest_document
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -438,6 +439,7 @@ class ConsentRequest(BaseModel):
 def set_llm_consent(
     body: ConsentRequest,
     request: Request,
+    background: BackgroundTasks,
     db: Annotated[Session, Depends(get_db)],
     user: Annotated[User, Depends(get_current_user)],
 ):
@@ -449,5 +451,26 @@ def set_llm_consent(
     user.llm_consent_providers = ",".join(providers) if body.granted else None
     action = "consent.llm_granted" if body.granted else "consent.llm_withdrawn"
     audit(db, request, user, action, "user", user.id, providers=providers)
+    # Documents that failed only for want of this consent go back into the queue: the same
+    # file cannot be uploaded twice, so nothing else would index them.
+    waiting = (
+        db.scalars(
+            select(Document).where(
+                Document.owner_id == user.id,
+                Document.status == DocumentStatus.FAILED,
+                Document.error_code == "CONSENT_REQUIRED",
+            )
+        ).all()
+        if body.granted
+        else []
+    )
+    for document in waiting:
+        document.status = DocumentStatus.QUEUED
+        document.attempts = 0
+        document.next_attempt_at = None
+        document.error_code = document.error_message = None
     db.commit()
+    if get_settings().ingest_inline:
+        for document in waiting:
+            background.add_task(ingest_document, document.id)
     return _public(user)

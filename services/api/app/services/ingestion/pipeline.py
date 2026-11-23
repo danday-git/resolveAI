@@ -138,6 +138,6 @@ def _fail(db, document: Document, code: str) -> None:
         "EMBEDDING_FAILED": "Document embeddings could not be generated",
         "INVALID_FILE": "File contents are invalid",
         "CONSENT_REQUIRED": "Sending data to the external model provider is not allowed; "
-        "allow it on the Account page and upload again",
+        "allow it on the Account page to index this document",
     }.get(code, "Document ingestion failed")
     db.commit()
