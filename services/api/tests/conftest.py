@@ -13,6 +13,9 @@ os.environ.setdefault("EMBEDDING_DIM", "256")
 os.environ.setdefault("DEMO_USER_EMAIL", "demo@resolveai.local")
 os.environ.setdefault("DEMO_USER_PASSWORD", "demo-password-for-tests")
 os.environ.setdefault("UPLOAD_DIR", "/tmp/resolveai-test-uploads")
+# A developer .env must not switch on services the tests do not start.
+os.environ["CLAMAV_HOST"] = ""
+os.environ["OCR_ENABLED"] = "false"
 
 import pytest
 from alembic.config import Config

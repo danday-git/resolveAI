@@ -10,12 +10,14 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_owned
+from app.core.audit import audit
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.errors import ApiError
 from app.core.limits import check_daily_budget, rate_limit_user
 from app.models import Chunk, Document, DocumentStatus, User
 from app.services.ingestion.pipeline import ingest_document
+from app.services.scan import scan_upload
 
 router = APIRouter(tags=["documents"])
 _ALLOWED = {".pdf", ".txt", ".md"}
@@ -61,6 +63,13 @@ def upload_document(
         mime_type = "text/markdown" if extension == ".md" else "text/plain"
     if not valid:
         raise ApiError(400, "INVALID_FILE", "File content does not match its extension")
+    try:
+        scan_upload(data)
+    except ApiError as error:
+        if error.code == "MALWARE_DETECTED":
+            audit(db, request, user, "document.malware_rejected", "document", **error.details)
+            db.commit()
+        raise
     checksum = hashlib.sha256(data).hexdigest()
     duplicate = db.scalar(
         select(Document).where(Document.owner_id == user.id, Document.sha256 == checksum)

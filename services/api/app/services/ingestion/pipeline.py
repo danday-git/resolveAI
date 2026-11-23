@@ -32,7 +32,12 @@ def ingest_document(
         db.commit()
         try:
             data = Path(document.storage_path).read_bytes()
-            pages = extract_pages(data, Path(document.filename).suffix.lower())
+            pages = extract_pages(
+                data,
+                Path(document.filename).suffix.lower(),
+                settings.ocr_languages if settings.ocr_enabled else None,
+                settings.ocr_max_pages,
+            )
             drafts = chunk_pages(pages)
             if not drafts:
                 raise ExtractionError("NO_EXTRACTABLE_TEXT")
@@ -123,6 +128,7 @@ def _fail(db, document: Document, code: str) -> None:
         "ENCRYPTED_PDF": "Encrypted PDFs are not supported",
         "NO_EXTRACTABLE_TEXT": "No extractable text was found",
         "PDF_PARSE_ERROR": "PDF could not be parsed",
+        "OCR_FAILED": "Text recognition failed on a scanned page",
         "EMBEDDING_DIMENSION_MISMATCH": "Embedding dimension does not match the database schema",
         "EMBEDDING_FAILED": "Document embeddings could not be generated",
         "INVALID_FILE": "File contents are invalid",

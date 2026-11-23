@@ -75,6 +75,15 @@ services:
       api:
         condition: service_healthy
 
+  # Malware scanner for uploads. Opt in with `--profile scan` and CLAMAV_HOST=clamav in .env.
+  # Needs about 2 GB of memory; the first start downloads the signature database.
+  clamav:
+    image: clamav/clamav:stable
+    profiles: ["scan"]
+    volumes:
+      - resolveai_clamav:/var/lib/clamav
+    restart: unless-stopped
+
   ollama:
     image: ollama/ollama
     profiles: ["ollama"]
@@ -87,3 +96,4 @@ volumes:
   resolveai_db:
   resolveai_uploads:
   resolveai_ollama:
+  resolveai_clamav:

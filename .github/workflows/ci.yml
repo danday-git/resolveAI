@@ -34,6 +34,8 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --frozen
+      - name: OCR tools (the scanned-PDF tests skip without them)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr poppler-utils
       - name: Lint
         run: uv run ruff check . && uv run ruff format --check .
       - name: Typecheck
