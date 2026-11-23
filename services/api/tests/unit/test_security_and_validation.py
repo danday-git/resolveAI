@@ -62,11 +62,11 @@ def test_redacts_quoted_json_credentials_and_preserves_quotes():
 
 
 def test_redacts_nested_secrets_inside_nonsecret_values():
-    raw = 'msg="login failed password=hunter2 for user" detail=\'token: abc\''
+    raw = "msg=\"login failed password=hunter2 for user\" detail='token: abc'"
 
     clean, summary = redact(raw)
 
-    assert clean == 'msg="login failed password=[REDACTED] for user" detail=\'token: [REDACTED]\''
+    assert clean == "msg=\"login failed password=[REDACTED] for user\" detail='token: [REDACTED]'"
     assert summary["secret"] == 2
 
 

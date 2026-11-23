@@ -93,9 +93,7 @@ def _count_secret(
         )
         return f"{prefix}{value_quote}{value}{value_quote}"
     summary["secret"] += 1
-    return (
-        f"{prefix}{value_quote}[REDACTED]{value_quote}"
-    )
+    return f"{prefix}{value_quote}[REDACTED]{value_quote}"
 
 
 def _redact_public_ip(match: re.Match[str], summary: dict[str, int]) -> str:
