@@ -242,7 +242,7 @@ function HypothesisEntry({ h, steps }: { h: Hypothesis; steps: Step[] }) {
       </dl>
       {steps.length > 0 && (
         <div className="mt-4 max-w-[75ch]">
-          <p className="text-sm text-muted">Read-only verification</p>
+          <p className="text-sm text-muted">Checks to run yourself (read-only; ResolveAI never runs them)</p>
           <ol className="mt-2 space-y-4">
             {steps.map((s) => (
               <StepItem key={s.id} s={s} />
@@ -305,7 +305,7 @@ function AnalysisView({ a, confirmed, onReview }: { a: Analysis; confirmed: bool
             </Entry>
           </>
         )}
-        <Stage title="Hypotheses" count={a.hypotheses.length} hint="suspected, unconfirmed" />
+        <Stage title="Possible causes" count={a.hypotheses.length} hint="suspected, not confirmed; verify with the checks below" />
         {a.hypotheses.map((h) => (
           <HypothesisEntry key={h.id} h={h} steps={a.verification_steps.filter((s) => s.hypothesis_id === h.id)} />
         ))}
@@ -488,7 +488,7 @@ function RcaEditor({
       <div className="min-w-0 space-y-6">
         <Alert tone="info">
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <AiLabel /> Draft generated from analysis; edit freely. A cause is only CONFIRMED by explicit reviewer acknowledgement.
+            <AiLabel /> Draft generated from the analysis; edit freely. It stays UNCONFIRMED because the model only suggests a cause. A person confirms it with the review panel, after writing the confirmed cause and its evidence.
           </span>
         </Alert>
         <Card title="Summary">

@@ -54,8 +54,7 @@ function LoginForm() {
           <div className="space-y-3">
             <h1>Sign in</h1>
             <p className="text-sm text-muted">
-              Local demo authentication. Credentials come from <code className="measured text-ink-2">DEMO_USER_EMAIL</code> and{" "}
-              <code className="measured text-ink-2">DEMO_USER_PASSWORD</code> (see README).
+              Use the account your administrator gave you. On a demo install, the demo account is filled in and its password is in the README.
             </p>
           </div>
           {expired && !error && <Alert tone="warning">Your session expired. Please sign in again.</Alert>}

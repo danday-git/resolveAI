@@ -45,7 +45,7 @@ export default function Metrics() {
       title="Evaluation / Ops"
       description={
         m
-          ? `${new Date(m.window.from).toLocaleDateString()} to ${new Date(m.window.to).toLocaleDateString()}. Costs are estimates from configurable pricing tables. Offline evaluation reports live in evals/reports/.`
+          ? `${new Date(m.window.from).toLocaleDateString()} to ${new Date(m.window.to).toLocaleDateString()}. How your requests and AI calls performed. Latency is time to respond (p50 typical, p95 slowest 5%); tokens are the text sent to and returned by the model; cost is estimated from a price table and reads Unknown when the provider has no price. Offline answer-quality reports are produced by the evaluation script, not shown here.`
           : "Latency, errors, token usage and estimated spend from real request events."
       }
     />
@@ -119,7 +119,7 @@ export default function Metrics() {
           <StatCard label="Estimated cost" value={usd(m.llm.estimated_cost_usd)} hint={`Ingestion failures ${m.ingestion.failed} / ${m.ingestion.documents_total}`} />
         </div>
         {m.llm.by_provider_model.length === 0 ? (
-          <Empty>No LLM calls yet.</Empty>
+          <Empty>No AI calls yet. The provider and model appear here after your first question or analysis.</Empty>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

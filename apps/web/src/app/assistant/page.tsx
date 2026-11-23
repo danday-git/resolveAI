@@ -1,9 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/icons";
-import { AiLabel, Alert, Badge, Button, Card, Highlight, LoadingRows, PageHeader, Spinner, cx, input } from "@/components/ui";
-import { ApiError, api, errorText, post, type ChatResponse, type Chunk, type Citation } from "@/lib/api";
+import { AiLabel, Alert, Badge, Button, Card, Highlight, LoadingRows, PageHeader, Spinner, cx, input, link } from "@/components/ui";
+import { ApiError, api, errorText, post, type ChatResponse, type Chunk, type Citation, type DocumentPage } from "@/lib/api";
 
 type Turn = { question: string; response?: ChatResponse; error?: string };
 type Preview = { citation: Citation; chunk?: Chunk; removed?: boolean };
@@ -15,6 +16,12 @@ const suggestions = [
 ];
 
 export default function Assistant() {
+  const [ready, setReady] = useState<number | null>(null);
+  useEffect(() => {
+    api<DocumentPage>("/documents?limit=1")
+      .then((d) => setReady(d.status_counts.ready ?? 0))
+      .catch(() => undefined);
+  }, []);
   const [question, setQuestion] = useState("");
   const [turns, setTurns] = useState<Turn[]>([]);
   const [conversationId, setConversationId] = useState<string | undefined>();
@@ -81,11 +88,26 @@ export default function Assistant() {
   return (
     <div className="grid gap-x-[var(--gap-columns)] lg:grid-cols-[minmax(0,1fr)_24rem]">
       <div className="flex min-h-[calc(100dvh-12rem)] min-w-0 flex-col">
-        <PageHeader title="Assistant" description="Grounded answers from your knowledge base. Unsupported questions are declined, not guessed." />
+        <PageHeader
+          title="Assistant"
+          description="Ask about your runbooks and SOPs. Answers come only from your Knowledge Base, each claim has a numbered source you can open, and a question your documents do not cover is declined instead of guessed."
+        />
+        {ready === 0 && (
+          <div className="mb-6">
+            <Alert tone="warning" title="Nothing to search yet">
+              No document in your Knowledge Base is ready, so every question will be declined.{" "}
+              <Link href="/knowledge" className={link}>
+                Upload a runbook or SOP
+              </Link>{" "}
+              first.
+            </Alert>
+          </div>
+        )}
         <div className="flex-1 pb-6">
           {turns.length === 0 && (
             <section>
-              <h2>Try a question</h2>
+              <h2>Example questions</h2>
+              <p className="mt-1.5 text-sm text-muted">They are answered only if your documents cover them.</p>
               <ul className="mt-4 border-t border-rule">
                 {suggestions.map((s) => (
                   <li key={s} className="flex items-center justify-between gap-4 border-b border-rule py-2.5">
@@ -149,7 +171,7 @@ export default function Assistant() {
               Ask
             </Button>
           </div>
-          <p className="mt-2 text-xs text-muted">Enter sends, Shift+Enter adds a new line. Documents are treated as untrusted data.</p>
+          <p className="mt-2 text-xs text-muted">Enter sends, Shift+Enter adds a new line. Instructions written inside documents are ignored.</p>
         </form>
       </div>
       <aside className="hidden lg:block">

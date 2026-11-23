@@ -82,6 +82,16 @@ function IncidentsPage() {
       {creating && (
         <Card title="New incident" description="Credentials, tokens, emails and public IPs in the log excerpt are redacted before storage.">
           <form className="max-w-3xl space-y-5" onSubmit={create}>
+          <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-ink">What helps</dt>
+              <dd className="mt-0.5 text-muted">What users saw, when it started, the affected service, and the log lines around the first error.</dd>
+            </div>
+            <div>
+              <dt className="text-ink">What not to paste</dt>
+              <dd className="mt-0.5 text-muted">Customer names, internal hostnames and other personal data. Only secrets, tokens, emails and public IPs are removed automatically.</dd>
+            </div>
+          </dl>
           {formError && <ErrorBox message={formError} />}
           <fieldset className="grid gap-4 sm:grid-cols-2">
             <legend className="visually-hidden">Basics</legend>
