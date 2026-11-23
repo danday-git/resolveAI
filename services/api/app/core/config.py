@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     anthropic_api_key: SecretStr | None = None
     anthropic_base_url: str = "https://api.anthropic.com"
     ollama_base_url: str = "http://localhost:11434"
+    # Ollama defaults to a 4096-token window and silently drops the start of a longer prompt,
+    # which is the system prompt. Must hold CONTEXT_TOKEN_BUDGET plus the instructions and reply.
+    ollama_num_ctx: int = 8192
     llm_timeout_seconds: float = 30
     llm_max_retries: int = 2
     llm_max_output_tokens: int = 800

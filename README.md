@@ -17,12 +17,24 @@ Built as a portfolio project to show production-minded AI engineering: grounded 
 | Ops | Structured JSON request logs (no prompts or secrets), request IDs, latency, tokens and estimated cost per provider/model, `/metrics/summary`, simulated alert thresholds. |
 | Evaluation | 30-case dataset (KB, troubleshooting, unanswerable, conflicting docs, prompt injection), CLI runner with Recall@5, citation validity, abstention accuracy, unsupported-claim rate, latency, cost, and a no-retrieval baseline. |
 
+## Accounts, operations and data controls
+
+| Area | What it does |
+|---|---|
+| Accounts | Registration (`ALLOW_REGISTRATION`), `admin` and `member` roles, password change and reset, optional OIDC single sign-on, admin page for users and the audit log. Administrators manage accounts; they do not see other users' documents or incidents. |
+| Ingestion worker | Documents are queued in PostgreSQL and indexed by a separate `worker` service with retry and backoff. Documents left in `processing` by a crash are picked up again. |
+| Scale | Rate limits are counted in PostgreSQL, so they hold across API instances. Incident and document lists are searched, filtered and paged on the server. |
+| Uploads | Optional ClamAV scan before a file is stored (Compose profile `scan`, fails closed) and Tesseract OCR for PDF pages without a text layer. |
+| Operations | Caddy HTTPS overlay, backup and restore scripts, a token-protected Prometheus endpoint and optional Sentry. See the [deployment guide](docs/deployment.md). |
+| Data controls | Audit events for account, document, incident and RCA changes; `RETENTION_*_DAYS` cleanup; per-user consent before any data is sent to OpenAI or Anthropic (not needed for Ollama or mock). |
+
 ## Architecture
 
 ```mermaid
 flowchart LR
   B[Browser] --> W[Next.js apps/web] -->|/api rewrite| A[FastAPI services/api]
   A --> D[(PostgreSQL 16 + pgvector)]
+  K[Ingestion worker] --> D
   A --> L{{OpenAI / Anthropic / Ollama / mock}}
 ```
 
@@ -67,7 +79,7 @@ Chat and embeddings are configured independently. Changing the **embedding** mod
 | OpenAI (default) | `LLM_PROVIDER=openai` `EMBEDDING_PROVIDER=openai` `OPENAI_API_KEY=sk-…` `EMBEDDING_MODEL=text-embedding-3-small` `EMBEDDING_DIM=1536` |
 | Anthropic chat + OpenAI embeddings | `LLM_PROVIDER=anthropic` `LLM_MODEL=claude-haiku-4-5` `ANTHROPIC_API_KEY=…` `EMBEDDING_PROVIDER=openai` `OPENAI_API_KEY=…` `EMBEDDING_DIM=1536` |
 | Anthropic chat + local embeddings | `LLM_PROVIDER=anthropic` `ANTHROPIC_API_KEY=…` `EMBEDDING_PROVIDER=ollama` `EMBEDDING_MODEL=nomic-embed-text` `EMBEDDING_DIM=768` |
-| Ollama (free, local) | `LLM_PROVIDER=ollama` `LLM_MODEL=qwen2.5:1.5b` `EMBEDDING_PROVIDER=ollama` `EMBEDDING_MODEL=nomic-embed-text` `EMBEDDING_DIM=768` `OLLAMA_BASE_URL=http://ollama:11434` |
+| Ollama (free, local) | `LLM_PROVIDER=ollama` `LLM_MODEL=llama3.2:3b` `EMBEDDING_PROVIDER=ollama` `EMBEDDING_MODEL=nomic-embed-text` `EMBEDDING_DIM=768` `OLLAMA_BASE_URL=http://ollama:11434` |
 | Mock (no network) | `LLM_PROVIDER=mock` `EMBEDDING_PROVIDER=mock` `EMBEDDING_DIM=256` |
 
 **Anthropic has no embeddings API.** If `LLM_PROVIDER=anthropic` and `EMBEDDING_PROVIDER` is unset, embeddings default to OpenAI (needs `OPENAI_API_KEY`); setting `EMBEDDING_PROVIDER=anthropic` is a startup error.
@@ -76,7 +88,7 @@ Ollama runs as an optional Compose profile:
 
 ```bash
 docker compose -f infra/docker-compose.yml --env-file .env --profile web --profile ollama up --build -d
-docker compose -f infra/docker-compose.yml exec ollama ollama pull qwen2.5:1.5b
+docker compose -f infra/docker-compose.yml exec ollama ollama pull llama3.2:3b
 docker compose -f infra/docker-compose.yml exec ollama ollama pull nomic-embed-text
 ```
 
@@ -142,12 +154,31 @@ Reports are written to `evals/reports/<name>.json` and `.md`, with chat and embe
 
 Committed reports are in [`evals/reports/`](evals/reports/). Scores depend heavily on the model: read every number together with the provider/model it was produced by.
 
+Results on the 30-case dataset with free local models (Ollama on an 8-core CPU, no GPU, `nomic-embed-text` embeddings, top-5 retrieval). The mock row is a deterministic extractive stub, not a language model; it is listed only to show that the pipeline numbers are not model quality.
+
+| Metric | `llama3.2:3b` | `qwen2.5:1.5b` | mock |
+|---|---|---|---|
+| Recall@5 | 1.00 | 1.00 | 0.80 |
+| Shipped citations valid | 1.00 | 1.00 | 1.00 |
+| Model-proposed citations accepted | 0.74 | 0.75 | 1.00 |
+| Unanswerable questions that abstained | 5 of 5 | 2 of 5 (2 more failed) | 5 of 5 |
+| Answerable questions wrongly abstained | 0.28 | 0.17 | 0.24 |
+| Unsupported-claim rate (heuristic) | 0.00 | 0.12 | 0.07 |
+| Required facts present in answers | 0.72 | 0.79 | 0.63 |
+| Requests failed (invalid model output) | 0 of 30 | 4 of 30 | 0 of 30 |
+| Latency p50 / p95 | 15.5 s / 23.9 s | 12.3 s / 26.4 s | 0.02 s |
+| Release gates | pass | pass | pass |
+
+Reading: every citation that reaches the user is valid with both models, because the server drops the roughly one in four citations the models get wrong. `llama3.2:3b` is the safer choice: no failed requests and no unsupported claims, but it declines about a quarter of answerable questions. `qwen2.5:1.5b` answers more, fails on 4 of 30 requests, and the heuristic flags its answer in 3 of 4 conflicting-document cases for containing the outdated value. Thirty cases is a small sample, and no hosted model (OpenAI, Anthropic) has been evaluated.
+
 ## Limitations
 
-- Demo authentication only (single seeded user, JWT); no SSO, RBAC or multi-tenant isolation beyond per-user ownership.
-- Ingestion runs as an in-process background task: a restart mid-ingestion leaves the document in `processing`; re-upload it.
-- No OCR: scanned PDFs are rejected. No malware scanning of uploads.
-- Rate limiting is in-process (single API instance).
+- Data is owned per user. There are no shared team workspaces, so an administrator cannot read or hand over another user's documents and incidents.
+- OIDC sign-on was tested against a stub identity provider only, and password-reset email against no real SMTP server.
+- One host and one database: no replication or failover. Backups are local files; copy them off the host yourself.
+- OCR reads the first `OCR_MAX_PAGES` (50) scanned pages of a document and was tested on clean printed text only.
+- Prometheus request counters are per API process; scrape every replica.
+- Small local models take 12 to 25 seconds per answer on CPU, and the smallest one fails the structured-output check on some requests (see the evaluation table).
 - The mock provider is extractive and deterministic — useful for tests and keyless demos, not a quality benchmark. Small local models produce more invalid JSON/citations, which the validators turn into abstentions.
 - Unsupported-claim rate in evals is a heuristic (forbidden-claim phrases + citation checks), not human judgement.
 - ResolveAI never executes commands and never auto-remediates. Suggested checks are read-only and must be run by an engineer.

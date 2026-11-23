@@ -283,6 +283,7 @@ def test_ollama_chat_and_embedding_shapes():
         body = json.loads(request.content)
         if request.url.path.endswith("/api/chat"):
             assert body["stream"] is False and body["format"] == "json"
+            assert body["options"]["num_ctx"] == 8192  # the default 4096 truncates long prompts
             return httpx.Response(
                 200,
                 json={

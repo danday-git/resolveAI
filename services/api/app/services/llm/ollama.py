@@ -29,6 +29,7 @@ class OllamaChatProvider(ChatProvider):
         self.timeout = settings.llm_timeout_seconds
         self.retries = settings.llm_max_retries
         self.max_output_tokens = settings.llm_max_output_tokens
+        self.num_ctx = settings.ollama_num_ctx
         self.client = client or httpx.Client()
         self.sleep = sleep
 
@@ -48,6 +49,7 @@ class OllamaChatProvider(ChatProvider):
             "options": {
                 "temperature": temperature,
                 "num_predict": max_tokens or self.max_output_tokens,
+                "num_ctx": self.num_ctx,
             },
         }
         started = time.perf_counter()

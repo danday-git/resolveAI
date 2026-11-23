@@ -25,7 +25,7 @@ flowchart LR
 
 ## Request flows
 
-**Ingestion.** `POST /documents` validates size, extension and magic bytes, stores the file under a random name, creates a `queued` document and returns 202. A FastAPI background task extracts text per page, chunks (≈550 tokens, 100 overlap, never across pages), skips duplicate chunk hashes, embeds in batches with retry, and marks the document `ready` or `failed` with an error code.
+**Ingestion.** `POST /documents` validates size, extension and magic bytes, stores the file under a random name, creates a `queued` document and returns 202. When `CLAMAV_HOST` is set the file is scanned first and rejected if infected or if the scanner is unreachable. The separate worker (`app/worker.py`) claims queued documents from PostgreSQL with `FOR UPDATE SKIP LOCKED`, retries with backoff, and reclaims documents a crashed worker left in `processing`. It extracts text per page, chunks (≈550 tokens, 100 overlap, never across pages), skips duplicate chunk hashes, embeds in batches with retry, and marks the document `ready` or `failed` with an error code.
 
 **Grounded chat.** The question is embedded, the top-k chunks *for the caller only* are retrieved, and chunks below the similarity threshold are dropped. With no usable evidence the API abstains without calling the LLM. Otherwise chunks are wrapped as untrusted `<chunk>` data and the model must return JSON `{answer, citations:[{chunk_id, quote}], abstain}`. Every citation is checked server-side: the chunk must be one of the retrieved ones and the quote must occur in its stored text. An answer that loses all its citations becomes an abstention.
 
