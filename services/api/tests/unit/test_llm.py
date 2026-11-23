@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 
 import httpx
@@ -432,3 +433,11 @@ def test_mock_chat_matches_non_ascii_words_in_the_document_language():
 
     assert answer["abstain"] is False
     assert answer["citations"][0]["quote"] == "Гостевые устройства подключаются к сети KANTOR-TAMU."
+
+
+def test_mock_tokens_split_latin_from_other_scripts():
+    from app.services.llm.mock import _TOKEN
+
+    tokens = re.findall(_TOKEN, "vpnクライアントの最低バージョンは5.2")
+    assert tokens == ["vpn", "クライアントの最低バージョンは", "5.2"]
+    assert re.findall(_TOKEN, "für gäste: kantor-tamu") == ["für", "gäste:", "kantor-tamu"]
