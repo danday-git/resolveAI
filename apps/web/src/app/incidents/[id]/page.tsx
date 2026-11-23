@@ -236,10 +236,16 @@ function RcaEditor({
     timeline: undefined,
     evidence_appendix: undefined,
   };
+  const timelineChanged =
+    JSON.stringify(parseTimeline(timelineValue)) !==
+    JSON.stringify(parseTimeline(timelineText(rca.body_json.timeline)));
+  const evidenceChanged =
+    JSON.stringify(parseEvidence(evidenceValue)) !==
+    JSON.stringify(parseEvidence(evidenceText(rca.body_json.evidence_appendix)));
   const dirty =
     JSON.stringify(bodyFields) !== JSON.stringify(originalFields) ||
-    timelineValue !== timelineText(rca.body_json.timeline) ||
-    evidenceValue !== evidenceText(rca.body_json.evidence_appendix);
+    timelineChanged ||
+    evidenceChanged;
   const canConfirm =
     ack &&
     !dirty &&
@@ -300,8 +306,12 @@ function RcaEditor({
                 patch(`/incidents/${incidentId}/rca`, {
                   body_json: {
                     ...body,
-                    timeline: parseTimeline(timelineValue),
-                    evidence_appendix: parseEvidence(evidenceValue),
+                    timeline: timelineChanged
+                      ? parseTimeline(timelineValue)
+                      : rca.body_json.timeline,
+                    evidence_appendix: evidenceChanged
+                      ? parseEvidence(evidenceValue)
+                      : rca.body_json.evidence_appendix,
                   },
                 }),
               )
