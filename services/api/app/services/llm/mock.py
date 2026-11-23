@@ -303,7 +303,7 @@ class MockChatProvider(ChatProvider):
                 category
             ]
             if category == "connection_refused" and upstream_port:
-                command = f"ss -ltnp | grep :{upstream_port}"
+                command = f"ss -ltnp 'sport = :{upstream_port}'"
             elif category == "timeout" and upstream_health_url:
                 command = f"curl -sS {upstream_health_url}"
             elif category == "http_5xx" and upstream_health_url:

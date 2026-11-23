@@ -173,7 +173,7 @@ def test_mock_analysis_derives_checks_from_observed_upstream_address():
     analysis = json.loads(result.text)
 
     assert [step["command_or_check"] for step in analysis["verification_steps"]] == [
-        "ss -ltnp | grep :8080",
+        "ss -ltnp 'sport = :8080'",
         "curl -sS http://127.0.0.1:8080/health",
         "curl -sS -I http://127.0.0.1:8080/health",
     ]
