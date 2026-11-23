@@ -110,6 +110,26 @@ def test_upload_rejects_type_size_and_no_text_pdf(client, auth_headers):
     assert document["error_code"] == "NO_EXTRACTABLE_TEXT"
 
 
+def test_upload_rejects_oversized_content_length_before_auth(client):
+    settings = get_settings()
+    old_max = settings.max_upload_mb
+    settings.max_upload_mb = 1
+    try:
+        content_length = settings.max_upload_mb * 1024 * 1024 + 64 * 1024 + 1
+        response = client.post(
+            "/api/v1/documents",
+            headers={"Content-Length": str(content_length)},
+            content=b"x",
+        )
+    finally:
+        settings.max_upload_mb = old_max
+
+    assert response.status_code == 413
+    error = response.json()["error"]
+    assert error["code"] == "FILE_TOO_LARGE"
+    assert error["request_id"] == response.headers["X-Request-ID"]
+
+
 def test_upload_sniffing_and_filename_traversal(client, auth_headers):
     invalid = client.post(
         "/api/v1/documents",

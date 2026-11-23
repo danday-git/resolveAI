@@ -6,9 +6,12 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from fastapi import Request
+from fastapi.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.core.config import get_settings
 from app.core.database import SessionLocal
+from app.core.errors import ApiError, api_error_handler
 from app.models import RequestLog
 
 request_id_var: contextvars.ContextVar[str | None] = contextvars.ContextVar(
@@ -27,9 +30,30 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         token = request_id_var.set(request_id)
         request.state.request_id = request_id
         started = time.perf_counter()
-        response = None
+        response: Response | None = None
         try:
-            response = await call_next(request)
+            content_length = request.headers.get("content-length")
+            if (
+                request.method == "POST"
+                and request.url.path.rstrip("/") == "/api/v1/documents"
+                and content_length is not None
+            ):
+                try:
+                    declared_length = int(content_length)
+                except ValueError:
+                    declared_length = 0
+                max_request_size = get_settings().max_upload_mb * 1024 * 1024 + 64 * 1024
+                if declared_length > max_request_size:
+                    response = await api_error_handler(
+                        request,
+                        ApiError(
+                            413,
+                            "FILE_TOO_LARGE",
+                            "File exceeds the configured upload limit",
+                        ),
+                    )
+            if response is None:
+                response = await call_next(request)
             response.headers["X-Request-ID"] = request_id
             return response
         finally:
