@@ -20,7 +20,14 @@ fi
 "${compose[@]}" stop api worker
 trap '"${compose[@]}" start api worker' EXIT
 db() { "${compose[@]}" exec -T db "$@"; }
-db pg_restore -U resolveai -d resolveai --clean --if-exists --no-owner --single-transaction <"$dump"
+# Into an empty database, swapped in only once it loaded: dropping objects in place fails on
+# tables added since the backup, and a failed restore must leave the current data alone.
+db dropdb -U resolveai --if-exists resolveai_restore
+db createdb -U resolveai resolveai_restore
+db pg_restore -U resolveai -d resolveai_restore --no-owner --exit-on-error <"$dump"
+db psql -U resolveai -d postgres -q -v ON_ERROR_STOP=1 \
+	-c 'DROP DATABASE resolveai WITH (FORCE)' \
+	-c 'ALTER DATABASE resolveai_restore RENAME TO resolveai'
 run=("${compose[@]}" run --rm --no-deps -T api)
 if [ -f "$uploads" ]; then
 	"${run[@]}" sh -c 'find /data/uploads -mindepth 1 -delete && tar -C /data/uploads -xzf -' <"$uploads"
