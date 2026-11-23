@@ -135,6 +135,7 @@ def test_openai_embedding_dimensions_and_batching():
         jwt_secret="x" * 32,
         llm_provider="mock",
         embedding_provider="openai",
+        embedding_model="text-embedding-3-small",
         openai_api_key="secret",
         embedding_dim=8,
         embedding_batch_size=2,
