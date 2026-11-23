@@ -5,7 +5,14 @@ import { useState } from "react";
 
 /** State mirrored into the query string so a filter or tab survives reload and can be shared. Needs a Suspense boundary above. */
 export function useQueryState(key: string, fallback = ""): [string, (v: string) => void] {
-  const [value, setValue] = useState(useSearchParams().get(key) ?? fallback);
+  const param = useSearchParams().get(key) ?? fallback;
+  const [value, setValue] = useState(param);
+  const [seen, setSeen] = useState(param);
+  if (param !== seen) {
+    setSeen(param);
+    // Follow a navigation that changed the query (e.g. the nav link to this same page), but not the late echo of an older write of ours.
+    if ((new URL(window.location.href).searchParams.get(key) ?? fallback) === param) setValue(param);
+  }
   return [
     value,
     (v) => {
