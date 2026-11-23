@@ -48,7 +48,7 @@ export default function Overview() {
   const steps: [string, string, string, boolean | null][] = [
     ["/knowledge", "Upload a runbook or SOP", "PDF, TXT or Markdown. These are the only sources the assistant may cite.", !!docs?.total],
     ["/knowledge", "Wait until it is ready", "ResolveAI splits each document into passages it can search. Ready means it can be cited.", count("ready") > 0],
-    ["/assistant", "Ask a question and open its source", "Every claim in an answer has a numbered source showing the exact text.", !!conversations],
+    ["/assistant", "Ask a question", "Open a numbered source under the answer to read the exact text. Ticked once you have asked, even if the question was declined.", !!conversations],
     ["/incidents?new=1", "Record an incident", "Symptoms and a log excerpt. Secrets, tokens, emails and public IPs are removed first.", !!incidents?.total],
     ["/incidents", "Run an analysis", "Observations from the log, possible causes, and read-only checks to run yourself.", !!incidents?.items.some((i) => i.status !== "open")],
     ["/incidents", "Review the RCA draft and confirm it yourself", "Open an analyzed incident, then its RCA tab. Not tracked here.", null],

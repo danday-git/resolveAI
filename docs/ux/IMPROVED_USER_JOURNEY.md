@@ -6,7 +6,7 @@ From first visit to a confirmed RCA, for an IT support engineer who has never se
 2. **Overview, first visit.** A welcome explains what ResolveAI is, who it is for and how it differs from a chatbot. Below it, "Getting started" lists six steps; each step is ticked from the account's real data, never faked:
    1. Upload a runbook or SOP (done when the account has a document).
    2. Wait until it is ready (done when a document is ready).
-   3. Ask a question and open its source (done when the account has a conversation).
+   3. Ask a question; open a source under the answer (done when the account has a conversation, even a declined one).
    4. Record an incident (done when the account has an incident).
    5. Run an analysis (done when an incident has moved past "open").
    6. Review the RCA draft and confirm it yourself (not tracked; links to the incidents list).
