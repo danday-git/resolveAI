@@ -127,7 +127,7 @@ export default function Assistant() {
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
+                if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                   e.preventDefault();
                   ask(question);
                 }
