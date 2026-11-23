@@ -28,6 +28,10 @@ docker compose -f infra/docker-compose.yml -f infra/docker-compose.prod.yml \
   --env-file .env exec api python -m app.seed
 ```
 
+The second command creates the administrator, `DEMO_USER_EMAIL` with `DEMO_USER_PASSWORD`.
+Accounts that sign up or arrive through single sign-on are always members; an administrator
+promotes them on the Admin page.
+
 Ports 80 and 443 must be reachable from the internet: Caddy obtains and renews the
 certificate from Let's Encrypt on its own. `HTTP_PORT` and `HTTPS_PORT` change the host ports.
 With `SITE_ADDRESS=localhost` Caddy issues a local certificate, which is enough for a trial run.
@@ -50,7 +54,8 @@ with `docker login` or pull the official image from a mirror
 - **Email:** set `SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD` and `SMTP_FROM` so users can reset
   their own password. Without it an administrator issues reset links from the Admin page.
 - **Single sign-on:** set `OIDC_ISSUER`, `OIDC_CLIENT_ID` and `OIDC_CLIENT_SECRET`, and register
-  `https://<SITE_ADDRESS>/api/v1/auth/oidc/callback` as the redirect URI at the provider.
+  `https://<SITE_ADDRESS>/api/v1/auth/oidc/callback` as the redirect URI at the provider. Every identity the provider accepts gets an account, so
+  with a public provider set `OIDC_ALLOWED_DOMAINS` to your email domains.
 
 ## 4. Backups
 
