@@ -1,4 +1,5 @@
 import re
+import subprocess
 from dataclasses import dataclass
 from io import BytesIO
 
@@ -16,7 +17,31 @@ def normalize_text(text: str) -> str:
     return re.sub(r"\n{3,}", "\n\n", text).strip()
 
 
-def extract_pages(data: bytes, extension: str) -> list[tuple[int, str]]:
+def ocr_page(data: bytes, page: int, languages: str) -> str:
+    """Text of one PDF page read from its picture: poppler renders it, Tesseract reads it."""
+    try:
+        image = subprocess.run(
+            ["pdftoppm", "-f", str(page), "-l", str(page), "-r", "200", "-gray", "-png", "-"],
+            input=data,
+            capture_output=True,
+            timeout=60,
+            check=True,
+        ).stdout
+        return subprocess.run(
+            ["tesseract", "stdin", "stdout", "-l", languages],
+            input=image,
+            capture_output=True,
+            timeout=120,
+            check=True,
+        ).stdout.decode("utf-8", errors="replace")
+    except (OSError, subprocess.SubprocessError):
+        raise ExtractionError("OCR_FAILED") from None
+
+
+def extract_pages(
+    data: bytes, extension: str, ocr_languages: str | None = None, ocr_max_pages: int = 50
+) -> list[tuple[int, str]]:
+    """ocr_languages (e.g. "eng") turns on OCR for PDF pages that carry no text layer."""
     if extension in {".txt", ".md"}:
         try:
             text = normalize_text(data.decode("utf-8"))
@@ -36,6 +61,12 @@ def extract_pages(data: bytes, extension: str) -> list[tuple[int, str]]:
                 (index, normalize_text(page.extract_text() or ""))
                 for index, page in enumerate(reader.pages, 1)
             ]
+            if ocr_languages:
+                # shortcut: only the first ocr_max_pages scanned pages are read, the rest stay
+                # empty; raise OCR_MAX_PAGES (or split the file) for longer scans.
+                scanned = [index for index, text in pages if not text][:ocr_max_pages]
+                for index in scanned:
+                    pages[index - 1] = (index, normalize_text(ocr_page(data, index, ocr_languages)))
         except ExtractionError:
             raise
         except Exception:

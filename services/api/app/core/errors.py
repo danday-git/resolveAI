@@ -1,5 +1,6 @@
 from typing import Any
 
+import sentry_sdk
 from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -65,4 +66,5 @@ async def llm_error_handler(request: Request, exc: Exception):
 
 
 async def internal_error_handler(request: Request, exc: Exception):
+    sentry_sdk.capture_exception(exc)  # does nothing unless SENTRY_DSN is configured
     return _response(request, 500, "INTERNAL_ERROR", "An internal error occurred")

@@ -58,7 +58,8 @@ function IncidentWorkspace() {
       <PageHeader
         crumbs={
           <nav aria-label="Breadcrumb" className="text-sm text-muted">
-            <Link href="/incidents" className={link}>
+            <Link href="/incidents" className={cx(link, "inline-flex items-center gap-1")}>
+              <Icon name="chevronLeft" className="h-3.5 w-3.5" />
               Incidents
             </Link>
           </nav>
@@ -101,7 +102,7 @@ function IncidentWorkspace() {
               <Field label="Extra context" hint="Optional, e.g. a recent deploy. Treated as untrusted data." className="flex-1">
                 {(p) => <input {...p} className={input} placeholder="Deployed v2.3 at 09:05" value={context} onChange={(e) => setContext(e.target.value)} />}
               </Field>
-              <Button type="submit" variant={a ? "secondary" : "primary"} loading={busy === "analyze"} disabled={!!busy} className="sm:mb-[1.375rem]">
+              <Button type="submit" variant={a ? "secondary" : "primary"} loading={busy === "analyze"} disabled={!!busy} icon={a ? "refresh" : "sparkle"} className="sm:mb-[1.375rem]">
                 {busy === "analyze" ? "Analyzing…" : a ? "Re-analyze" : "Analyze incident"}
               </Button>
             </form>
@@ -156,6 +157,7 @@ function OverviewTab({ inc, onAnalyze }: { inc: IncidentDetail; onAnalyze: () =>
         {!inc.latest_analysis && (
           <Button className="mt-5" onClick={onAnalyze}>
             Continue to analysis
+            <Icon name="chevronRight" />
           </Button>
         )}
       </section>
@@ -339,6 +341,7 @@ function AnalysisView({ a, confirmed, onReview }: { a: Analysis; confirmed: bool
           </p>
           <Button variant="secondary" size="sm" className="mt-3" onClick={onReview}>
             Open the RCA
+            <Icon name="chevronRight" />
           </Button>
         </Entry>
       </ol>
@@ -403,6 +406,7 @@ function RcaEditor({
   const generate = (variant: "primary" | "secondary") => (
     <Button
       variant={variant}
+      icon={rca ? "refresh" : "sparkle"}
       disabled={!analysisId || !!busy}
       loading={busy === "rca"}
       onClick={() => run("rca", () => post(`/incidents/${incidentId}/rca`, { analysis_id: analysisId }))}
@@ -421,6 +425,7 @@ function RcaEditor({
           ) : (
             <Button variant="secondary" onClick={onNeedAnalysis}>
               Go to analysis
+              <Icon name="chevronRight" />
             </Button>
           )
         }
@@ -547,6 +552,7 @@ function RcaEditor({
                 {dirty ? `Unsaved changes.${confirmed ? " Saving resets the review to UNCONFIRMED." : ""}` : "No unsaved changes."}
               </p>
               <a className={btn("secondary")} href={`/api/v1/incidents/${incidentId}/rca/export`}>
+                <Icon name="download" />
                 Export Markdown
               </a>
               {generate("secondary")}
@@ -569,6 +575,7 @@ function RcaEditor({
                 </label>
                 <Button
                   className="w-full"
+                  icon="check"
                   disabled={!canConfirm || !!busy}
                   loading={busy === "confirm"}
                   onClick={() => run("confirm", () => post(`/incidents/${incidentId}/rca/confirm`, { reviewer_acknowledgement: true, expected_updated_at: rca.updated_at }))}

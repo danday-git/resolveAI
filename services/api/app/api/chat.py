@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_owned
+from app.api.deps import get_current_user, get_owned, require_llm_consent
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.errors import ApiError
@@ -29,7 +29,7 @@ def chat(
     body: ChatRequest,
     request: Request,
     db: Annotated[Session, Depends(get_db)],
-    user: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(require_llm_consent)],
     provider: Annotated[ChatProvider, Depends(get_chat_provider)],
     embedder=Depends(get_embedding_provider),
 ):

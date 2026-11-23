@@ -6,8 +6,11 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.core.config import get_settings
 
 
-def make_engine(url: str | None = None):
-    return create_engine(url or get_settings().database_url, pool_pre_ping=True)
+def make_engine(url: str | None = None, **pool):
+    # hide_parameters: a failed statement must not carry document or log text into logs and reports.
+    return create_engine(
+        url or get_settings().database_url, pool_pre_ping=True, hide_parameters=True, **pool
+    )
 
 
 engine = make_engine()

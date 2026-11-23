@@ -22,6 +22,19 @@ class Settings(BaseSettings):
     demo_user_password: str | None = None
     upload_dir: str = "/data/uploads"
     max_upload_mb: int = 10
+    # True ingests inside the API process (one-process dev, tests). False leaves uploads queued
+    # for `python -m app.worker`, which also retries and recovers interrupted documents.
+    metrics_token: SecretStr | None = None
+    sentry_dsn: SecretStr | None = None
+    sentry_environment: str = "production"
+    clamav_host: str | None = None
+    clamav_port: int = 3310
+    ocr_enabled: bool = False
+    ocr_languages: str = "eng"
+    ocr_max_pages: int = 50
+    ingest_inline: bool = True
+    ingest_max_attempts: int = 3
+    ingest_lock_minutes: int = 15
     llm_provider: Literal["openai", "anthropic", "ollama", "mock"] = "openai"
     llm_model: str | None = None
     embedding_provider: Literal["openai", "anthropic", "ollama", "mock"] | None = None
@@ -32,6 +45,9 @@ class Settings(BaseSettings):
     anthropic_api_key: SecretStr | None = None
     anthropic_base_url: str = "https://api.anthropic.com"
     ollama_base_url: str = "http://localhost:11434"
+    # Ollama defaults to a 4096-token window and silently drops the start of a longer prompt,
+    # which is the system prompt. Must hold CONTEXT_TOKEN_BUDGET plus the instructions and reply.
+    ollama_num_ctx: int = 8192
     llm_timeout_seconds: float = 30
     llm_max_retries: int = 2
     llm_max_output_tokens: int = 800
@@ -42,8 +58,26 @@ class Settings(BaseSettings):
     context_token_budget: int = 3000
     rate_limit_per_minute: int = 30
     daily_budget_usd: float = 1.0
+    # Days to keep each kind of record; 0 keeps it forever. The worker deletes what is older.
+    retention_incident_days: int = 0
+    retention_conversation_days: int = 0
+    retention_log_days: int = 0
+    retention_audit_days: int = 0
     cors_origins: str = "http://localhost:3000"
     cookie_secure: bool = False
+    app_url: str = "http://localhost:3000"
+    allow_registration: bool = True
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_password: SecretStr | None = None
+    smtp_from: str = "resolveai@localhost"
+    oidc_issuer: str | None = None
+    oidc_client_id: str | None = None
+    oidc_client_secret: SecretStr | None = None
+    # Comma-separated email domains allowed to sign in through SSO; empty allows every
+    # identity the provider accepts.
+    oidc_allowed_domains: str = ""
 
     @field_validator("jwt_secret")
     @classmethod
@@ -52,7 +86,16 @@ class Settings(BaseSettings):
             raise ValueError("JWT_SECRET must be at least 32 characters")
         return value
 
-    @field_validator("openai_api_key", "anthropic_api_key", mode="before")
+    @field_validator(
+        "openai_api_key",
+        "anthropic_api_key",
+        "smtp_host",
+        "smtp_password",
+        "oidc_issuer",
+        "oidc_client_id",
+        "oidc_client_secret",
+        mode="before",
+    )
     @classmethod
     def empty_secret_is_missing(cls, value):
         return None if isinstance(value, str) and not value.strip() else value
@@ -78,6 +121,29 @@ class Settings(BaseSettings):
         if self.embedding_model is None:
             self.embedding_model = defaults[self.embedding_provider][1]
         return self
+
+    def missing_llm_consent(self, agreed: str | None) -> list[str]:
+        """External providers in use that are not in a user's comma-separated consent."""
+        return [p for p in self.external_llm_providers if p not in (agreed or "").split(",")]
+
+    @property
+    def external_llm_providers(self) -> list[str]:
+        """Third parties that receive document and incident text. Users must consent first.
+        A self-hosted server behind OPENAI_BASE_URL still counts: the name is all we can check."""
+        return sorted({self.llm_provider, str(self.embedding_provider)} & {"openai", "anthropic"})
+
+    @property
+    def retention(self) -> dict[str, int]:
+        return {
+            "incidents": self.retention_incident_days,
+            "conversations": self.retention_conversation_days,
+            "logs": self.retention_log_days,
+            "audit": self.retention_audit_days,
+        }
+
+    @property
+    def oidc_enabled(self) -> bool:
+        return bool(self.oidc_issuer and self.oidc_client_id and self.oidc_client_secret)
 
     @property
     def cors_origin_list(self) -> list[str]:

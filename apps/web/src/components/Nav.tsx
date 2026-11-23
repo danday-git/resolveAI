@@ -3,16 +3,16 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import { api, post } from "@/lib/api";
-import { Icon } from "./icons";
-import { btn, cx } from "./ui";
+import { api, post, providerNames, type Me } from "@/lib/api";
+import { Icon, type IconName } from "./icons";
+import { Alert, btn, cx, link } from "./ui";
 
-const links: [string, string][] = [
-  ["/", "Overview"],
-  ["/knowledge", "Knowledge Base"],
-  ["/assistant", "Assistant"],
-  ["/incidents", "Incidents"],
-  ["/metrics", "Evaluation / Ops"],
+const links: [string, string, IconName][] = [
+  ["/", "Overview", "home"],
+  ["/knowledge", "Knowledge Base", "book"],
+  ["/assistant", "Assistant", "chat"],
+  ["/incidents", "Incidents", "alert"],
+  ["/metrics", "Evaluation / Ops", "chart"],
 ];
 
 function Brand({ onClick }: { onClick?: () => void }) {
@@ -49,15 +49,16 @@ export function ThemeToggle({ className }: { className?: string }) {
         window.dispatchEvent(new Event("themechange"));
       }}
     >
+      <Icon name={light ? "moon" : "sun"} />
       {light ? "Dark mode" : "Light mode"}
     </button>
   );
 }
 
-function NavLinks({ path, onNavigate }: { path: string; onNavigate?: () => void }) {
+function NavLinks({ path, admin, onNavigate }: { path: string; admin: boolean; onNavigate?: () => void }) {
   return (
     <ul className="flex flex-col gap-0.5">
-      {links.map(([href, label]) => {
+      {(admin ? [...links, ["/admin", "Admin", "shield"] as const] : links).map(([href, label, icon]) => {
         const active = href === "/" ? path === "/" : path.startsWith(href);
         return (
           <li key={href}>
@@ -66,10 +67,11 @@ function NavLinks({ path, onNavigate }: { path: string; onNavigate?: () => void 
               onClick={onNavigate}
               aria-current={active ? "page" : undefined}
               className={cx(
-                "flex h-11 items-center whitespace-nowrap rounded-pill px-3 text-sm no-underline transition-colors duration-[var(--dur-micro)] active:bg-rule nav:h-9",
+                "flex h-11 items-center gap-2.5 whitespace-nowrap rounded-pill px-3 text-sm no-underline transition-colors duration-[var(--dur-micro)] active:bg-rule nav:h-9",
                 active ? "bg-rule/60 text-ink" : "text-muted hover:text-ink",
               )}
             >
+              <Icon name={icon} />
               {label}
             </Link>
           </li>
@@ -82,18 +84,19 @@ function NavLinks({ path, onNavigate }: { path: string; onNavigate?: () => void 
 export function AppShell({ children }: { children: ReactNode }) {
   const path = usePathname();
   const router = useRouter();
-  const [email, setEmail] = useState<string | null>(null);
+  const [me, setMe] = useState<Me | null>(null);
   const [drawer, setDrawer] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const wasDrawerOpen = useRef(false);
-  const isLogin = path === "/login";
+  const isLogin = ["/login", "/register", "/reset"].includes(path);
 
   useEffect(() => {
     if (isLogin) return;
-    api<{ email: string }>("/auth/me")
-      .then((u) => setEmail(u.email))
+    // Refetched on every navigation so the consent notice clears once it is given.
+    api<Me>("/auth/me")
+      .then(setMe)
       .catch(() => router.replace("/login"));
-  }, [isLogin, router]);
+  }, [isLogin, router, path]);
 
   useEffect(() => {
     if (!drawer) return;
@@ -125,12 +128,20 @@ export function AppShell({ children }: { children: ReactNode }) {
   };
   const account = (
     <div className="border-t border-rule pt-3">
-      <p className="measured truncate px-3 text-muted" title={email ?? undefined}>
-        {email ?? "…"}
-      </p>
+      <Link
+        href="/account"
+        onClick={() => setDrawer(false)}
+        aria-current={path === "/account" ? "page" : undefined}
+        title={me ? `Account: ${me.email}` : undefined}
+        className="measured flex items-center gap-2.5 rounded-pill px-3 py-1 text-muted no-underline transition-colors hover:text-ink active:bg-rule aria-[current]:text-ink"
+      >
+        <Icon name="user" />
+        <span className="truncate">{me?.email ?? "…"}</span>
+      </Link>
       <div className="mt-1 flex items-center justify-between gap-2">
         <ThemeToggle />
         <button className={btn("ghost", "sm")} onClick={signOut}>
+          <Icon name="logout" />
           Sign out
         </button>
       </div>
@@ -147,7 +158,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Brand />
         </div>
         <nav aria-label="Main" className="mt-6 flex-1 overflow-y-auto">
-          <NavLinks path={path} />
+          <NavLinks path={path} admin={me?.role === "admin"} />
         </nav>
         {account}
       </aside>
@@ -185,7 +196,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </button>
             </div>
             <nav aria-label="Main" className="-mx-3 mb-3">
-              <NavLinks path={path} onNavigate={() => setDrawer(false)} />
+              <NavLinks path={path} admin={me?.role === "admin"} onNavigate={() => setDrawer(false)} />
             </nav>
             <div className="-mx-3">{account}</div>
           </div>
@@ -193,6 +204,17 @@ export function AppShell({ children }: { children: ReactNode }) {
       </header>
       {drawer && <div className="fixed inset-0 z-[var(--z-sticky)] bg-scrim nav:hidden" onClick={() => setDrawer(false)} />}
       <main id="main" inert={drawer} className="mx-auto w-full max-w-[var(--container)] px-[var(--gutter)] pb-24 pt-10">
+        {me?.llm_consent_required && path !== "/account" && (
+          <div className="mb-6">
+            <Alert tone="warning" title="Uploads, the assistant and incident analysis are paused for your account">
+              They send your data to {providerNames(me.external_llm_providers)}.{" "}
+              <Link href="/account" className={link}>
+                Review and allow it on the Account page
+              </Link>
+              .
+            </Alert>
+          </div>
+        )}
         {children}
       </main>
     </div>

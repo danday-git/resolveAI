@@ -13,6 +13,9 @@ os.environ.setdefault("EMBEDDING_DIM", "256")
 os.environ.setdefault("DEMO_USER_EMAIL", "demo@resolveai.local")
 os.environ.setdefault("DEMO_USER_PASSWORD", "demo-password-for-tests")
 os.environ.setdefault("UPLOAD_DIR", "/tmp/resolveai-test-uploads")
+# A developer .env must not switch on services the tests do not start.
+os.environ["CLAMAV_HOST"] = ""
+os.environ["OCR_ENABLED"] = "false"
 
 import pytest
 from alembic.config import Config
@@ -21,7 +24,6 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from alembic import command
-from app.api.auth import _attempts
 from app.core.database import SessionLocal, engine
 from app.core.limits import reset_limits
 from app.core.security import hash_password
@@ -49,12 +51,12 @@ def migrate_database():
 @pytest.fixture(autouse=True)
 def clean_database(migrate_database):
     reset_limits()
-    _attempts.clear()
     with engine.begin() as connection:
         connection.execute(
             text(
                 "TRUNCATE TABLE feedback, request_logs, llm_requests, rca_reports, analyses, "
-                "incidents, messages, conversations, chunks, documents, users CASCADE"
+                "incidents, messages, conversations, chunks, documents, audit_events, "
+                "password_reset_tokens, users CASCADE"
             )
         )
     yield
@@ -66,7 +68,9 @@ def client(clean_database):
     with SessionLocal() as db:
         db.add(
             User(
-                email="demo@resolveai.local", password_hash=hash_password("demo-password-for-tests")
+                email="demo@resolveai.local",
+                password_hash=hash_password("demo-password-for-tests"),
+                role="admin",
             )
         )
         db.commit()

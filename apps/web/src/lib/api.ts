@@ -45,7 +45,18 @@ export function errorText(e: unknown): string {
   return "Unexpected error. Please retry.";
 }
 
+export type Me = {
+  id: string;
+  email: string;
+  role: string;
+  external_llm_providers: string[];
+  llm_consent_required: boolean;
+  llm_consent_at: string | null;
+};
+export const providerNames = (ids: string[]) => ids.map((id) => ({ openai: "OpenAI", anthropic: "Anthropic" })[id] ?? id).join(" and ");
+
 export type Page<T> = { items: T[]; total: number; limit: number; offset: number };
+export type DocumentPage = Page<DocumentMeta> & { status_counts: Partial<Record<DocumentMeta["status"], number>> };
 
 export type DocumentMeta = {
   id: string;
@@ -149,3 +160,15 @@ export type Incident = {
 };
 
 export type IncidentDetail = Incident & { latest_analysis: Analysis | null; rca: Rca | null };
+
+export type AdminUser = { id: string; email: string; role: "admin" | "member"; is_active: boolean; sso: boolean; created_at: string };
+export type AuditEvent = {
+  id: string;
+  actor_email: string | null;
+  action: string;
+  resource_type: string | null;
+  resource_id: string | null;
+  detail: Record<string, unknown>;
+  request_id: string | null;
+  created_at: string;
+};

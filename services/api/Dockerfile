@@ -6,6 +6,10 @@ ENV UV_COMPILE_BYTECODE=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+# OCR for scanned PDFs: poppler renders the page, Tesseract reads it (English and Indonesian).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-ind poppler-utils \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY services/api/pyproject.toml services/api/uv.lock /app/services/api/
 RUN pip install --no-cache-dir uv && cd /app/services/api && uv sync --frozen --no-dev

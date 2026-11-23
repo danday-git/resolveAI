@@ -14,10 +14,13 @@ dependencies = [
     "pydantic>=2.9",
     "pydantic-settings>=2.5",
     "pypdf>=5.0",
-    "PyJWT>=2.9",
+    "PyJWT[crypto]>=2.9",
     "python-multipart>=0.0.12",
     "sqlalchemy>=2.0",
     "uvicorn[standard]>=0.30",
+    # Below 3 on purpose: 3.x dropped the init options that keep local variables and PII
+    # out of reports. Re-check app/core/observability.py before raising this.
+    "sentry-sdk>=2.0,<2.76",
 ]
 
 [dependency-groups]

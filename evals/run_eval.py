@@ -72,29 +72,50 @@ class Client:
         return self.http.delete(f"/api/v1{path}", headers=self.headers)
 
 
-def in_process_http() -> tuple[Any, str]:
+def in_process_http(fixtures_dir: Path) -> tuple[Any, str]:
     from fastapi.testclient import TestClient
 
     from app.main import app
 
-    password = _ensure_eval_user()
+    password = _ensure_eval_user(fixtures_dir)
     return TestClient(app).__enter__(), password
 
 
-def _ensure_eval_user() -> str:
+def _ensure_eval_user(fixtures_dir: Path) -> str:
     from sqlalchemy import select
 
+    from app.core.config import get_settings
     from app.core.database import SessionLocal
     from app.core.security import hash_password
-    from app.models import User
+    from app.models import Document, User
 
     password = secrets.token_urlsafe(24)
+    external = get_settings().external_llm_providers
+    fixtures = [path for path in fixtures_dir.iterdir() if path.is_file()]
     with SessionLocal() as db:
         user = db.scalar(select(User).where(User.email == EVAL_EMAIL))
         if user is None:
-            db.add(User(email=EVAL_EMAIL, password_hash=hash_password(password)))
-        else:
-            user.password_hash = hash_password(password)
+            user = User(email=EVAL_EMAIL)
+            db.add(user)
+        # Running the eval against a hosted provider is the decision to send it the fixtures.
+        # Anything else in the account (someone signed up with this address) is not ours to send.
+        # With --base-url the account's owner decides.
+        # By name or by content, as load_fixtures matches them: an upload can alter the name.
+        elif external and db.scalar(
+            select(Document.id).where(
+                Document.owner_id == user.id,
+                Document.filename.not_in([path.name for path in fixtures]),
+                Document.sha256.not_in(
+                    [hashlib.sha256(path.read_bytes()).hexdigest() for path in fixtures]
+                ),
+            )
+        ):
+            raise SystemExit(
+                f"{EVAL_EMAIL} holds documents that are not eval fixtures; delete them before "
+                f"an eval that sends its documents to {', '.join(external)}"
+            )
+        user.password_hash = hash_password(password)
+        user.llm_consent_providers = ",".join(external) or None
         db.commit()
     return password
 
@@ -413,7 +434,7 @@ def main() -> int:
         http = httpx.Client(base_url=args.base_url, timeout=120)
         email, password = args.email, args.password
     else:
-        http, password = in_process_http()
+        http, password = in_process_http(args.fixtures_dir)
         email = EVAL_EMAIL
     client = login(http, email, password)
     needed = {f for d in dataset for f in d["document_fixture_ids"]}

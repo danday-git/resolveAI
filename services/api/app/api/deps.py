@@ -4,6 +4,7 @@ from fastapi import Cookie, Depends, Header, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.errors import ApiError
 from app.core.security import decode_access_token
@@ -20,14 +21,16 @@ def get_current_user(
     if not token:
         raise ApiError(401, "UNAUTHORIZED", "Authentication required")
     try:
-        user_id, _ = decode_access_token(token)
+        user_id, issued_at = decode_access_token(token)
     except TimeoutError:
         raise ApiError(401, "TOKEN_EXPIRED", "Session expired") from None
     except ValueError:
         raise ApiError(401, "UNAUTHORIZED", "Invalid authentication token") from None
     user = db.scalar(select(User).where(User.id == user_id))
-    if user is None:
+    if user is None or not user.is_active:
         raise ApiError(401, "UNAUTHORIZED", "Invalid authentication token")
+    if user.password_changed_at and issued_at < user.password_changed_at:
+        raise ApiError(401, "TOKEN_EXPIRED", "Session expired")
     request.state.user_id = user.id
     return user
 
@@ -43,3 +46,26 @@ def get_owned[ModelT](db: Session, model: type[ModelT], object_id: UUID, user: U
     if owner_id != user.id:
         raise ApiError(403, "FORBIDDEN", "You do not have access to this resource")
     return instance
+
+
+def require_admin(user: User = Depends(get_current_user)) -> User:
+    if user.role != "admin":
+        raise ApiError(403, "FORBIDDEN", "Administrator role required")
+    return user
+
+
+def missing_llm_consent(user: User) -> list[str]:
+    """External providers in use that this user has not agreed to send data to."""
+    return get_settings().missing_llm_consent(user.llm_consent_providers)
+
+
+def require_llm_consent(user: User = Depends(get_current_user)) -> User:
+    missing = missing_llm_consent(user)
+    if missing:
+        raise ApiError(
+            403,
+            "LLM_CONSENT_REQUIRED",
+            "Allow sending your data to the external model provider on the Account page first",
+            {"providers": missing},
+        )
+    return user

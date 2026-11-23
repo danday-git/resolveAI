@@ -35,7 +35,7 @@ PostgreSQL (5433) and Ollama (11434) bind to loopback only. The API and web port
 
 ## Out of scope (known limitations)
 
-Real SSO/RBAC, multi-tenant isolation beyond `owner_id`, malware scanning of uploads, OCR, encryption at rest beyond what the database provides, and distributed rate limiting (the limiter is in-process).
+Shared team workspaces and multi-tenant isolation beyond `owner_id`, encryption at rest beyond what the database provides, and replication or failover. Accounts and roles, the ClamAV scan, external-provider consent, retention and the production overlay are described in the [deployment guide](../deployment.md).
 
 ## Secrets
 

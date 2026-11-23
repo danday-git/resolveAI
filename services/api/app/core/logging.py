@@ -12,6 +12,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.core.errors import ApiError, api_error_handler
+from app.core.observability import observe_request
 from app.models import RequestLog
 
 request_id_var: contextvars.ContextVar[str | None] = contextvars.ContextVar(
@@ -64,6 +65,13 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             if request_path.startswith("/api/v1") and not route.startswith("/api/v1"):
                 route = f"/api/v1{route}"
             status = response.status_code if response is not None else 500
+            # Unmatched paths share one label, so scanners cannot grow the metric without bound.
+            observe_request(
+                request.method,
+                route if isinstance(route_path, str) else "unmatched",
+                status,
+                time.perf_counter() - started,
+            )
             logger.info(
                 json.dumps(
                     {

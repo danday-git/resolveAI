@@ -1,6 +1,7 @@
 from app.models.base import Base
 from app.models.entities import (
     Analysis,
+    AuditEvent,
     CauseStatus,
     Chunk,
     Conversation,
@@ -12,6 +13,8 @@ from app.models.entities import (
     IncidentStatus,
     LLMRequest,
     Message,
+    PasswordResetToken,
+    RateLimit,
     RCAReport,
     RCAStatus,
     RequestLog,
@@ -20,6 +23,7 @@ from app.models.entities import (
 
 __all__ = [
     "Analysis",
+    "AuditEvent",
     "Base",
     "CauseStatus",
     "Chunk",
@@ -32,7 +36,9 @@ __all__ = [
     "IncidentStatus",
     "LLMRequest",
     "Message",
+    "PasswordResetToken",
     "RCAReport",
+    "RateLimit",
     "RCAStatus",
     "RequestLog",
     "User",

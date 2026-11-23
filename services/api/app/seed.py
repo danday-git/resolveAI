@@ -26,6 +26,7 @@ def seed(fixtures_dir: Path | None = None) -> None:
             user = User(
                 email=settings.demo_user_email.lower(),
                 password_hash=hash_password(settings.demo_user_password),
+                role="admin",
             )
             db.add(user)
             db.commit()

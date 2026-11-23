@@ -24,6 +24,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://resolveai:resolveai@db:5432/resolveai
       UPLOAD_DIR: /data/uploads
+      INGEST_INLINE: "false"
     depends_on:
       db:
         condition: service_healthy
@@ -41,6 +42,24 @@ services:
       timeout: 5s
       retries: 10
 
+  # Ingests uploads from the queue, retries failures and recovers interrupted documents.
+  worker:
+    build:
+      context: ..
+      dockerfile: services/api/Dockerfile
+    command: ["python", "-m", "app.worker"]
+    env_file:
+      - ../.env
+    environment:
+      DATABASE_URL: postgresql+psycopg://resolveai:resolveai@db:5432/resolveai
+      UPLOAD_DIR: /data/uploads
+    depends_on:
+      api:
+        condition: service_healthy
+    volumes:
+      - resolveai_uploads:/data/uploads
+    restart: unless-stopped
+
   web:
     profiles: ["web"]
     build:
@@ -56,6 +75,15 @@ services:
       api:
         condition: service_healthy
 
+  # Malware scanner for uploads. Opt in with `--profile scan` and CLAMAV_HOST=clamav in .env.
+  # Needs about 2 GB of memory; the first start downloads the signature database.
+  clamav:
+    image: clamav/clamav:stable
+    profiles: ["scan"]
+    volumes:
+      - resolveai_clamav:/var/lib/clamav
+    restart: unless-stopped
+
   ollama:
     image: ollama/ollama
     profiles: ["ollama"]
@@ -68,3 +96,4 @@ volumes:
   resolveai_db:
   resolveai_uploads:
   resolveai_ollama:
+  resolveai_clamav:

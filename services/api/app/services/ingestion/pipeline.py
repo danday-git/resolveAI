@@ -1,6 +1,8 @@
 import logging
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+import sentry_sdk
 from sqlalchemy import select
 
 from app.core.config import get_settings
@@ -16,23 +18,36 @@ from app.services.llm.usage import record_llm_call
 logger = logging.getLogger(__name__)
 
 
-def ingest_document(document_id, embedder: EmbeddingProvider | None = None) -> None:
+def ingest_document(
+    document_id, embedder: EmbeddingProvider | None = None, max_attempts: int = 1
+) -> None:
+    """Failures that may pass (provider down, lost connection) requeue until max_attempts."""
     settings = get_settings()
     with SessionLocal() as db:
         document = db.get(Document, document_id)
         if document is None:
             return
         document.status = DocumentStatus.PROCESSING
+        document.locked_at = datetime.now(UTC)
+        document.attempts += 1
         db.commit()
         try:
             data = Path(document.storage_path).read_bytes()
-            pages = extract_pages(data, Path(document.filename).suffix.lower())
+            pages = extract_pages(
+                data,
+                Path(document.filename).suffix.lower(),
+                settings.ocr_languages if settings.ocr_enabled else None,
+                settings.ocr_max_pages,
+            )
             drafts = chunk_pages(pages)
             if not drafts:
                 raise ExtractionError("NO_EXTRACTABLE_TEXT")
             provider = embedder or get_embedding_provider(settings)
             owner = db.get(User, document.owner_id)
             if owner is not None:
+                # Consent may have been withdrawn while the document waited in the queue.
+                if settings.missing_llm_consent(owner.llm_consent_providers):
+                    raise ExtractionError("CONSENT_REQUIRED")
                 check_daily_budget(db, owner)
             result = provider.embed([draft.text for draft in drafts])
             record_llm_call(
@@ -93,11 +108,22 @@ def ingest_document(document_id, embedder: EmbeddingProvider | None = None) -> N
                 owner_id=document.owner_id,
                 error_category=exc.category,
             )
-            _fail(db, document, "EMBEDDING_FAILED")
+            _retry_or_fail(db, document, "EMBEDDING_FAILED", max_attempts)
         except Exception:
             db.rollback()
+            sentry_sdk.capture_exception()
             logger.warning("Document ingestion failed")
-            _fail(db, document, "INGESTION_FAILED")
+            _retry_or_fail(db, document, "INGESTION_FAILED", max_attempts)
+
+
+def _retry_or_fail(db, document: Document, code: str, max_attempts: int) -> None:
+    if document.attempts >= max_attempts:
+        return _fail(db, document, code)
+    document.status = DocumentStatus.QUEUED
+    document.next_attempt_at = datetime.now(UTC) + timedelta(
+        seconds=30 * 2 ** (document.attempts - 1)
+    )
+    db.commit()
 
 
 def _fail(db, document: Document, code: str) -> None:
@@ -107,8 +133,11 @@ def _fail(db, document: Document, code: str) -> None:
         "ENCRYPTED_PDF": "Encrypted PDFs are not supported",
         "NO_EXTRACTABLE_TEXT": "No extractable text was found",
         "PDF_PARSE_ERROR": "PDF could not be parsed",
+        "OCR_FAILED": "Text recognition failed on a scanned page",
         "EMBEDDING_DIMENSION_MISMATCH": "Embedding dimension does not match the database schema",
         "EMBEDDING_FAILED": "Document embeddings could not be generated",
         "INVALID_FILE": "File contents are invalid",
+        "CONSENT_REQUIRED": "Sending data to the external model provider is not allowed; "
+        "allow it on the Account page to index this document",
     }.get(code, "Document ingestion failed")
     db.commit()
