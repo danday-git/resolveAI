@@ -84,6 +84,7 @@ def in_process_http() -> tuple[Any, str]:
 def _ensure_eval_user() -> str:
     from sqlalchemy import select
 
+    from app.core.config import get_settings
     from app.core.database import SessionLocal
     from app.core.security import hash_password
     from app.models import User
@@ -92,9 +93,12 @@ def _ensure_eval_user() -> str:
     with SessionLocal() as db:
         user = db.scalar(select(User).where(User.email == EVAL_EMAIL))
         if user is None:
-            db.add(User(email=EVAL_EMAIL, password_hash=hash_password(password)))
-        else:
-            user.password_hash = hash_password(password)
+            user = User(email=EVAL_EMAIL)
+            db.add(user)
+        user.password_hash = hash_password(password)
+        # Running the eval against a hosted provider is the decision to send it the fixtures,
+        # which are all this account holds. With --base-url the account's owner decides.
+        user.llm_consent_providers = ",".join(get_settings().external_llm_providers) or None
         db.commit()
     return password
 
