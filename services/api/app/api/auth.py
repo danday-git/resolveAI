@@ -18,6 +18,7 @@ from app.models import User
 router = APIRouter(prefix="/auth", tags=["auth"])
 _attempts: dict[str, list[float]] = {}
 _lock = Lock()
+_last_prune: float | None = None
 
 
 class LoginRequest(BaseModel):
@@ -40,6 +41,7 @@ class LoginRequest(BaseModel):
 
 
 def _check_login_limit(key: str) -> None:
+    global _last_prune
     now = monotonic()
     with _lock:
         recent = [stamp for stamp in _attempts.get(key, []) if now - stamp < 60]
@@ -51,7 +53,10 @@ def _check_login_limit(key: str) -> None:
         if not rate_limited:
             recent.append(now)
             _attempts[key] = recent
-        if len(_attempts) > 10_000:
+        if len(_attempts) > 10_000 and (
+            _last_prune is None or now - _last_prune >= 60
+        ):
+            _last_prune = now
             for attempt_key, stamps in list(_attempts.items()):
                 if not any(now - stamp < 60 for stamp in stamps):
                     del _attempts[attempt_key]
