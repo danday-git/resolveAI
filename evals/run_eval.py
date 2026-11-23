@@ -115,12 +115,17 @@ def list_all(c: Client, path: str) -> list[dict[str, Any]]:
 
 
 def load_fixtures(c: Client, fixtures_dir: Path, needed: set[str]) -> dict[str, str]:
-    """Reset the eval user's KB to exactly the needed fixtures. Returns chunk_id -> 'fixture#idx'."""
+    """Refresh matching fixture documents; returns chunk_id -> 'fixture#idx'."""
+    fixture_paths = {
+        fixture_id: next(fixtures_dir.glob(f"{fixture_id}.*"))
+        for fixture_id in sorted(needed)
+    }
+    fixture_names = {path.name for path in fixture_paths.values()}
     for doc in list_all(c, "/documents"):
-        c.delete(f"/documents/{doc['id']}")
+        if doc["filename"] in fixture_names:
+            c.delete(f"/documents/{doc['id']}")
     doc_ids: dict[str, str] = {}
-    for fixture_id in sorted(needed):
-        path = next(fixtures_dir.glob(f"{fixture_id}.*"))
+    for fixture_id, path in fixture_paths.items():
         r = c.post("/documents", files={"file": (path.name, path.read_bytes(), "text/markdown")})
         if r.status_code != 202:
             raise SystemExit(f"upload {path.name} failed: {r.status_code} {r.text}")
