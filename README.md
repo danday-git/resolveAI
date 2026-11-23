@@ -84,6 +84,8 @@ Chat and embeddings are configured independently. Changing the **embedding** mod
 
 **Anthropic has no embeddings API.** If `LLM_PROVIDER=anthropic` and `EMBEDDING_PROVIDER` is unset, embeddings default to OpenAI (needs `OPENAI_API_KEY`); setting `EMBEDDING_PROVIDER=anthropic` is a startup error.
 
+**Changing the chat model without a restart.** Administrators can open **AI provider** in the sidebar to pick the chat provider and model, paste an OpenAI or Anthropic API key, and run **Test connection**. The choice applies to every account and overrides `LLM_PROVIDER`, `LLM_MODEL` and the API key variables for chat. Keys are stored encrypted with a key derived from `JWT_SECRET` and are never shown again (only the last 4 characters); rotating `JWT_SECRET` makes saved keys unreadable, so enter them again afterwards. Switching to OpenAI or Anthropic asks every user for consent again. The embedding model is shown but stays in `.env`, because changing it needs re-ingestion. Embeddings keep using the key from `.env`.
+
 Ollama runs as an optional Compose profile:
 
 ```bash
