@@ -91,6 +91,7 @@ def _ensure_eval_user(fixtures_dir: Path) -> str:
 
     password = secrets.token_urlsafe(24)
     external = get_settings().external_llm_providers
+    fixtures = [path for path in fixtures_dir.iterdir() if path.is_file()]
     with SessionLocal() as db:
         user = db.scalar(select(User).where(User.email == EVAL_EMAIL))
         if user is None:
@@ -99,10 +100,14 @@ def _ensure_eval_user(fixtures_dir: Path) -> str:
         # Running the eval against a hosted provider is the decision to send it the fixtures.
         # Anything else in the account (someone signed up with this address) is not ours to send.
         # With --base-url the account's owner decides.
+        # By name or by content, as load_fixtures matches them: an upload can alter the name.
         elif external and db.scalar(
             select(Document.id).where(
                 Document.owner_id == user.id,
-                Document.filename.not_in([path.name for path in fixtures_dir.iterdir()]),
+                Document.filename.not_in([path.name for path in fixtures]),
+                Document.sha256.not_in(
+                    [hashlib.sha256(path.read_bytes()).hexdigest() for path in fixtures]
+                ),
             )
         ):
             raise SystemExit(

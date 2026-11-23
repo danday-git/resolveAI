@@ -101,20 +101,25 @@ def test_queued_document_is_not_sent_after_consent_is_withdrawn(
     assert (document["status"], document["error_code"]) == ("queued", None)
 
 
-def test_eval_account_can_load_fixtures_with_an_external_provider(client, external_provider):
+def test_eval_account_can_load_fixtures_with_an_external_provider(
+    client, external_provider, tmp_path
+):
     runner = run_path(str(Path(__file__).resolve().parents[4] / "evals" / "run_eval.py"))
-    fixtures = runner["FIXTURES_DEFAULT"]
-    creds = {"email": runner["EVAL_EMAIL"], "password": runner["_ensure_eval_user"](fixtures)}
-    token = client.post("/api/v1/auth/login", json=creds).json()["access_token"]
-    upload = client.post(
-        "/api/v1/documents",
-        headers={"Authorization": f"Bearer {token}"},
-        files={"file": ("a.md", b"# Runbook\n" + b"restart nginx " * 30)},
-    )
-    assert upload.status_code == 202
-    # That upload is not a fixture, so the next run must not send it to the hosted provider.
+    fixture = b"# Fixture\n" + b"rotate the certificate " * 30
+    (tmp_path / "tls sop.md").write_bytes(fixture)
+
+    def upload(name, data):
+        creds = {"email": runner["EVAL_EMAIL"], "password": runner["_ensure_eval_user"](tmp_path)}
+        token = client.post("/api/v1/auth/login", json=creds).json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+        return client.post("/api/v1/documents", headers=headers, files={"file": (name, data)})
+
+    # The upload strips the space from the name; the next run still knows it as a fixture.
+    assert upload("tls sop.md", fixture).json()["filename"] == "tlssop.md"
+    assert upload("a.md", b"# Runbook\n" + b"restart nginx " * 30).status_code == 202
+    # That one is not a fixture, so the next run must not send it to the hosted provider.
     with pytest.raises(SystemExit, match="not eval fixtures"):
-        runner["_ensure_eval_user"](fixtures)
+        runner["_ensure_eval_user"](tmp_path)
 
 
 def test_consent_does_not_carry_over_to_another_provider(
