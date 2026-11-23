@@ -45,6 +45,9 @@ def ingest_document(
             provider = embedder or get_embedding_provider(settings)
             owner = db.get(User, document.owner_id)
             if owner is not None:
+                # Consent may have been withdrawn while the document waited in the queue.
+                if settings.missing_llm_consent(owner.llm_consent_providers):
+                    raise ExtractionError("CONSENT_REQUIRED")
                 check_daily_budget(db, owner)
             result = provider.embed([draft.text for draft in drafts])
             record_llm_call(
@@ -134,5 +137,7 @@ def _fail(db, document: Document, code: str) -> None:
         "EMBEDDING_DIMENSION_MISMATCH": "Embedding dimension does not match the database schema",
         "EMBEDDING_FAILED": "Document embeddings could not be generated",
         "INVALID_FILE": "File contents are invalid",
+        "CONSENT_REQUIRED": "Sending data to the external model provider is not allowed; "
+        "allow it on the Account page and upload again",
     }.get(code, "Document ingestion failed")
     db.commit()

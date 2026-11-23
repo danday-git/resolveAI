@@ -56,8 +56,7 @@ def require_admin(user: User = Depends(get_current_user)) -> User:
 
 def missing_llm_consent(user: User) -> list[str]:
     """External providers in use that this user has not agreed to send data to."""
-    agreed = set((user.llm_consent_providers or "").split(","))
-    return [name for name in get_settings().external_llm_providers if name not in agreed]
+    return get_settings().missing_llm_consent(user.llm_consent_providers)
 
 
 def require_llm_consent(user: User = Depends(get_current_user)) -> User:

@@ -7,6 +7,7 @@ from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.core.retention import purge_expired
 from app.models import AuditEvent, Incident, RequestLog, User
+from app.services.ingestion.pipeline import ingest_document
 
 INCIDENT = {"title": "Checkout 502", "service": "checkout", "severity": "SEV3", "symptoms": "502"}
 
@@ -61,6 +62,28 @@ def test_external_provider_is_blocked_until_the_user_consents(
     client.put("/api/v1/auth/llm-consent", headers=auth_headers, json={"granted": False})
     assert client.post(calls[0][0], headers=auth_headers, **calls[0][1]).status_code == 403
     assert {"consent.llm_granted", "consent.llm_withdrawn"} <= set(actions())
+
+
+def test_queued_document_is_not_sent_after_consent_is_withdrawn(
+    client, auth_headers, external_provider, monkeypatch
+):
+    monkeypatch.setattr(get_settings(), "ingest_inline", False)
+    client.put("/api/v1/auth/llm-consent", headers=auth_headers, json={"granted": True})
+    upload = client.post(
+        "/api/v1/documents",
+        headers=auth_headers,
+        files={"file": ("a.md", b"# Runbook\n" + b"restart nginx " * 30)},
+    )
+    assert upload.status_code == 202
+    client.put("/api/v1/auth/llm-consent", headers=auth_headers, json={"granted": False})
+
+    class Embedder:
+        def embed(self, texts):
+            raise AssertionError("document text was sent without consent")
+
+    ingest_document(upload.json()["id"], embedder=Embedder(), max_attempts=3)
+    document = client.get(f"/api/v1/documents/{upload.json()['id']}", headers=auth_headers).json()
+    assert (document["status"], document["error_code"]) == ("failed", "CONSENT_REQUIRED")
 
 
 def test_consent_does_not_carry_over_to_another_provider(

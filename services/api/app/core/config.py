@@ -122,6 +122,10 @@ class Settings(BaseSettings):
             self.embedding_model = defaults[self.embedding_provider][1]
         return self
 
+    def missing_llm_consent(self, agreed: str | None) -> list[str]:
+        """External providers in use that are not in a user's comma-separated consent."""
+        return [p for p in self.external_llm_providers if p not in (agreed or "").split(",")]
+
     @property
     def external_llm_providers(self) -> list[str]:
         """Third parties that receive document and incident text. Users must consent first.
