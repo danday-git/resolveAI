@@ -109,36 +109,36 @@ export default function IncidentWorkspace() {
             { id: "rca", label: "RCA" },
           ]}
         />
-        <div role="tabpanel" id={`panel-${current}`} aria-labelledby={`tab-${current}`}>
-          {current === "overview" && <OverviewTab inc={inc} onAnalyze={() => setTab("analysis")} />}
-          {current === "analysis" && (
-            <div className="space-y-5">
-              <Card>
-                <form
-                  className="flex flex-col gap-3 sm:flex-row sm:items-end"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    run("analyze", () => post(`/incidents/${id}/analyze`, { context: context || null }), "Analysis complete.");
-                  }}
-                >
-                  <Field label="Extra context" hint="Optional, e.g. a recent deploy. Treated as untrusted data." className="flex-1">
-                    {(p) => <input {...p} className={input} placeholder="Deployed v2.3 at 09:05" value={context} onChange={(e) => setContext(e.target.value)} />}
-                  </Field>
-                  <Button type="submit" icon={a ? "refresh" : "sparkle"} loading={busy === "analyze"} disabled={!!busy} className="sm:mb-5">
-                    {busy === "analyze" ? "Analyzing…" : a ? "Re-analyze" : "Analyze incident"}
-                  </Button>
-                </form>
-              </Card>
-              {a ? (
-                <AnalysisView a={a} />
-              ) : (
-                <EmptyState icon="sparkle" title="No analysis yet" description="Run an analysis to extract observations, suspected causes and read-only verification steps." />
-              )}
-            </div>
-          )}
-          {current === "rca" && (
-            <RcaEditor key={inc.rca?.updated_at ?? "none"} incidentId={id} rca={inc.rca} analysisId={a?.id ?? null} busy={busy} run={run} onNeedAnalysis={() => setTab("analysis")} />
-          )}
+        <div role="tabpanel" id="panel-overview" aria-labelledby="tab-overview" hidden={current !== "overview"}>
+          <OverviewTab inc={inc} onAnalyze={() => setTab("analysis")} />
+        </div>
+        <div role="tabpanel" id="panel-analysis" aria-labelledby="tab-analysis" hidden={current !== "analysis"}>
+          <div className="space-y-5">
+            <Card>
+              <form
+                className="flex flex-col gap-3 sm:flex-row sm:items-end"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  run("analyze", () => post(`/incidents/${id}/analyze`, { context: context || null }), "Analysis complete.");
+                }}
+              >
+                <Field label="Extra context" hint="Optional, e.g. a recent deploy. Treated as untrusted data." className="flex-1">
+                  {(p) => <input {...p} className={input} placeholder="Deployed v2.3 at 09:05" value={context} onChange={(e) => setContext(e.target.value)} />}
+                </Field>
+                <Button type="submit" icon={a ? "refresh" : "sparkle"} loading={busy === "analyze"} disabled={!!busy} className="sm:mb-5">
+                  {busy === "analyze" ? "Analyzing…" : a ? "Re-analyze" : "Analyze incident"}
+                </Button>
+              </form>
+            </Card>
+            {a ? (
+              <AnalysisView a={a} />
+            ) : (
+              <EmptyState icon="sparkle" title="No analysis yet" description="Run an analysis to extract observations, suspected causes and read-only verification steps." />
+            )}
+          </div>
+        </div>
+        <div role="tabpanel" id="panel-rca" aria-labelledby="tab-rca" hidden={current !== "rca"}>
+          <RcaEditor key={inc.rca?.updated_at ?? "none"} incidentId={id} rca={inc.rca} analysisId={a?.id ?? null} busy={busy} run={run} onNeedAnalysis={() => setTab("analysis")} />
         </div>
       </div>
     </div>
