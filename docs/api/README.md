@@ -21,7 +21,7 @@ Errors always look like `{"error": {"code": "...", "message": "...", "request_id
 | GET/PATCH/DELETE | `/incidents/{id}` | Detail (includes latest analysis and RCA) / update / delete. |
 | POST | `/incidents/{id}/analyze` | Structured analysis (§10 schema). |
 | POST/GET/PATCH | `/incidents/{id}/rca` | Generate draft / read / edit. |
-| POST | `/incidents/{id}/rca/confirm` | Requires `{"reviewer_acknowledgement": true}`. |
+| POST | `/incidents/{id}/rca/confirm` | Requires `{"reviewer_acknowledgement": true, "expected_updated_at": "<RCA updated_at>"}`; stale revisions return 409 `RCA_CHANGED`. |
 | GET | `/incidents/{id}/rca/export` | Markdown download. |
 | GET | `/metrics/summary`, `/metrics/requests` | Ops metrics and recent traces. |
 

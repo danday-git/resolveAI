@@ -42,7 +42,10 @@ def test_analyze_observations_rca_reset_metrics_and_confirm(client, auth_headers
         client.post(
             f"/api/v1/incidents/{incident['id']}/rca/confirm",
             headers=auth_headers,
-            json={"reviewer_acknowledgement": False},
+            json={
+                "reviewer_acknowledgement": False,
+                "expected_updated_at": incident["created_at"],
+            },
         ).status_code
         == 422
     )
@@ -55,7 +58,10 @@ def test_analyze_observations_rca_reset_metrics_and_confirm(client, auth_headers
     invalid = client.post(
         f"/api/v1/incidents/{incident['id']}/rca/confirm",
         headers=auth_headers,
-        json={"reviewer_acknowledgement": True},
+        json={
+            "reviewer_acknowledgement": True,
+            "expected_updated_at": draft["updated_at"],
+        },
     )
     assert invalid.status_code == 422
     body = {
@@ -69,10 +75,23 @@ def test_analyze_observations_rca_reset_metrics_and_confirm(client, auth_headers
         json={"body_json": body},
     )
     assert patched.status_code == 200
+    stale = client.post(
+        f"/api/v1/incidents/{incident['id']}/rca/confirm",
+        headers=auth_headers,
+        json={
+            "reviewer_acknowledgement": True,
+            "expected_updated_at": draft["updated_at"],
+        },
+    )
+    assert stale.status_code == 409
+    assert stale.json()["error"]["code"] == "RCA_CHANGED"
     confirmed = client.post(
         f"/api/v1/incidents/{incident['id']}/rca/confirm",
         headers=auth_headers,
-        json={"reviewer_acknowledgement": True},
+        json={
+            "reviewer_acknowledgement": True,
+            "expected_updated_at": patched.json()["updated_at"],
+        },
     )
     assert confirmed.json()["cause_status"] == "CONFIRMED"
     edited = client.patch(

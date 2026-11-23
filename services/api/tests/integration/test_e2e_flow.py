@@ -65,7 +65,10 @@ def test_end_to_end_upload_chat_incident_rca_export(client, auth_headers):
     confirm = client.post(
         f"/api/v1/incidents/{incident_id}/rca/confirm",
         headers=auth_headers,
-        json={"reviewer_acknowledgement": True},
+        json={
+            "reviewer_acknowledgement": True,
+            "expected_updated_at": updated.json()["updated_at"],
+        },
     )
     assert confirm.status_code == 200
     assert confirm.json()["cause_status"] == "CONFIRMED"

@@ -287,7 +287,14 @@ function RcaEditor({
           <button
             className={`${button} mt-2`}
             disabled={!canConfirm || !!busy || rca.cause_status === "CONFIRMED"}
-            onClick={() => run("confirm", () => post(`/incidents/${incidentId}/rca/confirm`, { reviewer_acknowledgement: true }))}
+            onClick={() =>
+              run("confirm", () =>
+                post(`/incidents/${incidentId}/rca/confirm`, {
+                  reviewer_acknowledgement: true,
+                  expected_updated_at: rca.updated_at,
+                }),
+              )
+            }
           >
             Confirm root cause
           </button>

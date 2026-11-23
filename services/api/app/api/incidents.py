@@ -69,6 +69,7 @@ class RcaPatchRequest(BaseModel):
 
 class ConfirmRequest(BaseModel):
     reviewer_acknowledgement: Literal[True]
+    expected_updated_at: datetime
 
 
 def _incident_json(incident: Incident) -> dict:
@@ -468,6 +469,8 @@ def confirm_rca(
     report = db.scalar(select(RCAReport).where(RCAReport.incident_id == incident.id))
     if report is None:
         raise ApiError(404, "NOT_FOUND", "RCA report not found")
+    if body.expected_updated_at != report.updated_at:
+        raise ApiError(409, "RCA_CHANGED", "The RCA report changed; refresh before confirming")
     if not report.body_json.get("confirmed_cause", "").strip() or not report.body_json.get(
         "evidence_appendix"
     ):
