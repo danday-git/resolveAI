@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge, Card, Empty, ErrorBox, button, buttonSecondary } from "@/components/ui";
-import { api, errorText, type Chunk, type DocumentMeta, type Page } from "@/lib/api";
+import {
+  api,
+  errorText,
+  type DocumentChunkPreview,
+  type DocumentMeta,
+  type Page,
+} from "@/lib/api";
 
 const MAX_MB = 10;
 
@@ -10,7 +16,10 @@ export default function KnowledgeBase() {
   const [docs, setDocs] = useState<DocumentMeta[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [preview, setPreview] = useState<{ doc: DocumentMeta; chunks: Chunk[] } | null>(null);
+  const [preview, setPreview] = useState<{
+    doc: DocumentMeta;
+    chunks: DocumentChunkPreview[];
+  } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(() => {
@@ -56,7 +65,7 @@ export default function KnowledgeBase() {
 
   async function open(d: DocumentMeta) {
     try {
-      const p = await api<Page<Chunk>>(`/documents/${d.id}/chunks?limit=100`);
+      const p = await api<Page<DocumentChunkPreview>>(`/documents/${d.id}/chunks?limit=100`);
       setPreview({ doc: d, chunks: p.items });
     } catch (e) {
       setError(errorText(e));
@@ -121,7 +130,7 @@ export default function KnowledgeBase() {
             {preview.chunks.map((c) => (
               <li key={c.id} className="rounded border border-slate-200 p-3 text-sm">
                 <p className="mb-1 text-xs text-slate-500">Page {c.page_number} · chunk {c.chunk_index}</p>
-                <p className="whitespace-pre-wrap">{c.text}</p>
+                <p className="whitespace-pre-wrap">{c.text_preview}</p>
               </li>
             ))}
           </ol>

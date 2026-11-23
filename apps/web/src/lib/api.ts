@@ -69,6 +69,14 @@ export type Chunk = {
   text: string;
 };
 
+export type DocumentChunkPreview = {
+  id: string;
+  page_number: number;
+  chunk_index: number;
+  text_preview: string;
+  token_count: number;
+};
+
 export type Citation = { document_id: string; chunk_id: string; page: number; quote: string; filename: string };
 
 export type ChatResponse = {
