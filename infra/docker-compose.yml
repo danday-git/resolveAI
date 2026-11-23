@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: resolveai
       POSTGRES_DB: resolveai
     ports:
-      - "5434:5432"
+      - "5433:5432"
     volumes:
       - resolveai_db:/var/lib/postgresql/data
     healthcheck:

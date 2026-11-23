@@ -332,7 +332,9 @@ def analyze_incident(
             {
                 "chunk_id": str(chunk.chunk_id),
                 "document_id": str(chunk.document_id),
+                "filename": chunk.filename,
                 "page_number": chunk.page_number,
+                "score": chunk.score,
             }
             for chunk in chunks
         ],

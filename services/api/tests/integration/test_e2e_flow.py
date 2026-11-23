@@ -38,6 +38,10 @@ def test_end_to_end_upload_chat_incident_rca_export(client, auth_headers):
         "refused" in observation["excerpt"].lower()
         for observation in analysis.json()["observations"]
     )
+    evidence = analysis.json()["evidence"]
+    assert evidence
+    assert all(item["filename"] == "nginx-502-runbook.md" for item in evidence)
+    assert all(isinstance(item["score"], (int, float)) for item in evidence)
     report = client.post(
         f"/api/v1/incidents/{incident_id}/rca",
         headers=auth_headers,

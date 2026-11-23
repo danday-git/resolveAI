@@ -18,6 +18,7 @@ import pytest
 from alembic.config import Config
 from fastapi.testclient import TestClient
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from alembic import command
 from app.api.auth import _attempts
@@ -32,6 +33,15 @@ API_DIR = Path(__file__).resolve().parents[1]
 
 @pytest.fixture(scope="session", autouse=True)
 def migrate_database():
+    if os.getenv("REQUIRE_TEST_DB") == "1":
+        try:
+            with engine.connect() as connection:
+                connection.execute(text("SELECT 1"))
+        except SQLAlchemyError as error:
+            pytest.exit(
+                f"REQUIRE_TEST_DB=1 but the test database is unreachable ({type(error).__name__})",
+                returncode=1,
+            )
     config = Config(str(API_DIR / "alembic.ini"))
     command.upgrade(config, "head")
 
