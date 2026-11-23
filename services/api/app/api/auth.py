@@ -43,10 +43,20 @@ def _check_login_limit(key: str) -> None:
     now = monotonic()
     with _lock:
         recent = [stamp for stamp in _attempts.get(key, []) if now - stamp < 60]
-        if len(recent) >= 10:
+        if recent:
+            _attempts[key] = recent
+        else:
+            _attempts.pop(key, None)
+        rate_limited = len(recent) >= 10
+        if not rate_limited:
+            recent.append(now)
+            _attempts[key] = recent
+        if len(_attempts) > 10_000:
+            for attempt_key, stamps in list(_attempts.items()):
+                if not any(now - stamp < 60 for stamp in stamps):
+                    del _attempts[attempt_key]
+        if rate_limited:
             raise ApiError(429, "RATE_LIMITED", "Too many login attempts")
-        recent.append(now)
-        _attempts[key] = recent
 
 
 @router.post("/login")
