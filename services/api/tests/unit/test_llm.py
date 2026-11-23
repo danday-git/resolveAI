@@ -116,12 +116,64 @@ def test_mock_analysis_groups_categories_and_caps_distinct_read_only_checks():
     assert hypotheses[2]["title"] == "Backend service process stopped or crashed"
     assert all(item["status"] == "suspected" for item in hypotheses)
     assert commands == [
-        "ss -ltnp | grep 3000",
+        "ss -ltnp",
         "nginx -T",
         "systemctl status app-backend",
     ]
     assert len(commands) == len(set(commands))
     assert all(step["read_only"] for step in analysis["verification_steps"])
+
+
+def test_mock_analysis_derives_checks_from_observed_upstream_address():
+    result = MockChatProvider().chat(
+        [
+            ChatMessage("system", "TASK: incident_analysis"),
+            ChatMessage(
+                "user",
+                '<observation id="obs-1" source="log" '
+                'category="connection_refused">connect() failed for upstream: '
+                '"http://127.0.0.1:8080/api"</observation>\n'
+                '<observation id="obs-2" source="log" category="timeout">'
+                'upstream timed out at upstream: "http://127.0.0.1:8080/api"'
+                "</observation>\n"
+                '<observation id="obs-3" source="log" category="http_5xx">'
+                'upstream: "http://127.0.0.1:8080/api" returned 502'
+                "</observation>",
+            ),
+        ]
+    )
+
+    analysis = json.loads(result.text)
+
+    assert [step["command_or_check"] for step in analysis["verification_steps"]] == [
+        "ss -ltnp | grep :8080",
+        "curl -sS http://127.0.0.1:8080/health",
+        "curl -sS -I http://127.0.0.1:8080/health",
+    ]
+
+
+def test_mock_analysis_uses_port_agnostic_checks_without_upstream_address():
+    result = MockChatProvider().chat(
+        [
+            ChatMessage("system", "TASK: incident_analysis"),
+            ChatMessage(
+                "user",
+                '<observation id="obs-1" source="log" category="connection_refused">'
+                "connect() failed (111: Connection refused)</observation>\n"
+                '<observation id="obs-2" source="log" category="timeout">'
+                "upstream timed out</observation>",
+            ),
+        ]
+    )
+
+    analysis = json.loads(result.text)
+    commands = [step["command_or_check"] for step in analysis["verification_steps"]]
+
+    assert commands == [
+        "ss -ltnp",
+        "Request the upstream's health endpoint shown in proxy_pass",
+    ]
+    assert all("3000" not in command for command in commands)
 
 
 def test_openai_request_shapes_and_usage():

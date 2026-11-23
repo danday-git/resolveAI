@@ -3,6 +3,7 @@ import json
 import math
 import re
 import time
+from urllib.parse import urlsplit
 
 from app.core.tokens import approx_tokens
 from app.services.llm.base import (
@@ -44,7 +45,7 @@ _ANALYSIS_HYPOTHESES = {
         "Upstream service not listening on proxy_pass port",
         "The upstream refused the connection, which can occur when no service is accepting "
         "connections on the configured address and port.",
-        "ss -ltnp | grep 3000",
+        "ss -ltnp",
         "A process is listening on the configured upstream port.",
         "A missing listener supports, but does not confirm, this hypothesis.",
     ),
@@ -65,14 +66,14 @@ _ANALYSIS_HYPOTHESES = {
     "timeout": (
         "Upstream slow or overloaded",
         "The upstream may be taking too long to respond or may be under heavy load.",
-        "curl -sS http://127.0.0.1:3000/health",
+        "Request the upstream's health endpoint shown in proxy_pass",
         "The health endpoint responds promptly with a healthy status.",
         "A slow or failed response supports, but does not confirm, this hypothesis.",
     ),
     "http_5xx": (
         "Backend is returning server errors",
         "The observed HTTP 5xx status may indicate that the backend is failing requests.",
-        "curl -sS -I http://127.0.0.1:3000/health",
+        "Request the upstream's health endpoint shown in proxy_pass",
         "The health endpoint returns a successful HTTP status.",
         "A server-error response supports, but does not confirm, this hypothesis.",
     ),
@@ -246,6 +247,7 @@ class MockChatProvider(ChatProvider):
 
     def _analysis(self, user: str) -> dict[str, object]:
         observations = []
+        excerpts = []
         grouped: dict[str, list[str]] = {}
         aliases = {
             "nginx_connection_refused": "connection_refused",
@@ -257,7 +259,8 @@ class MockChatProvider(ChatProvider):
             user,
             re.DOTALL,
         ):
-            observation_id, raw_categories, _ = match.groups()
+            observation_id, raw_categories, excerpt = match.groups()
+            excerpts.append(excerpt)
             observations.append(
                 {"id": observation_id, "interpretation": "Observed in provided evidence."}
             )
@@ -267,6 +270,23 @@ class MockChatProvider(ChatProvider):
                     evidence = grouped.setdefault(category, [])
                     if observation_id not in evidence:
                         evidence.append(observation_id)
+        upstream_port = None
+        upstream_health_url = None
+        for excerpt in excerpts:
+            match = re.search(r'\bupstream:\s*"(https?://[^"\s]+)"', excerpt, re.I)
+            if not match:
+                continue
+            try:
+                parsed = urlsplit(match.group(1))
+                hostname = parsed.hostname
+                port = parsed.port or (443 if parsed.scheme == "https" else 80)
+            except ValueError:
+                continue
+            if hostname:
+                host = f"[{hostname}]" if ":" in hostname else hostname
+                upstream_port = str(port)
+                upstream_health_url = f"{parsed.scheme}://{host}:{port}/health"
+                break
         hypotheses = []
         steps = []
         for index, (category, evidence) in enumerate(list(grouped.items())[:3], 1):
@@ -274,6 +294,12 @@ class MockChatProvider(ChatProvider):
             title, explanation, command, expected_result, interpretation = _ANALYSIS_HYPOTHESES[
                 category
             ]
+            if category == "connection_refused" and upstream_port:
+                command = f"ss -ltnp | grep :{upstream_port}"
+            elif category == "timeout" and upstream_health_url:
+                command = f"curl -sS {upstream_health_url}"
+            elif category == "http_5xx" and upstream_health_url:
+                command = f"curl -sS -I {upstream_health_url}"
             hypotheses.append(
                 {
                     "id": hypothesis_id,
