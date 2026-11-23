@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
-import { Nav } from "@/components/Nav";
+import type { Metadata, Viewport } from "next";
+import { AppShell } from "@/components/Nav";
+import { ToastProvider } from "@/components/ui";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -7,12 +8,15 @@ export const metadata: Metadata = {
   description: "Evidence-grounded incident investigation assistant",
 };
 
+export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#fafafa" };
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
-        <Nav />
-        <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
+        <ToastProvider>
+          <AppShell>{children}</AppShell>
+        </ToastProvider>
       </body>
     </html>
   );
