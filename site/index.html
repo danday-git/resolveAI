@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ResolveAI: incident answers you can verify</title>
+  <meta name="description" content="An incident investigation workbench: cited answers from your runbooks, suspected causes kept apart from facts, and root causes only a person confirms.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:wght@400&family=Host+Grotesk:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="wrap nav">
+    <a class="wordmark" href="./">ResolveAI</a>
+    <a href="https://github.com/danday-git/resolveAI">Source on GitHub</a>
+  </header>
+
+  <main>
+    <section class="wrap hero">
+      <div>
+        <h1>Incident answers you can verify</h1>
+        <p>Cited answers from your runbooks. Root causes only a person confirms.</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="https://github.com/danday-git/resolveAI">View the repository</a>
+          <a class="btn" href="#run">Run it locally</a>
+        </div>
+      </div>
+      <figure class="shot" style="margin:0">
+        <img src="img/assistant.png" width="1280" height="800" alt="The Assistant answering an Indonesian question about an Nginx 502 from an English runbook, with the cited excerpt highlighted.">
+      </figure>
+    </section>
+
+    <section class="wrap section split">
+      <div>
+        <h2>Every answer points at its source</h2>
+        <p>Quotes are checked against the stored document before you see them. When the knowledge base has no evidence, the assistant says so instead of guessing. Ask in any language; quotes stay in the language of the source.</p>
+      </div>
+      <figure class="shot" style="margin:0"><img src="img/knowledge.png" width="1280" height="800" alt="The Knowledge Base with indexed runbooks and SOPs." loading="lazy"></figure>
+    </section>
+
+    <section class="wrap section split">
+      <div>
+        <h2>Possible causes stay possible</h2>
+        <p>Paste symptoms and a log. Secrets are redacted before storage. The analysis cites log lines, labels every hypothesis as suspected and suggests only read-only checks.</p>
+      </div>
+      <figure class="shot" style="margin:0"><img src="img/analysis.png" width="975" height="900" alt="An incident analysis with observations, possible causes and read-only checks." loading="lazy"></figure>
+    </section>
+
+    <section class="wrap section split">
+      <div>
+        <h2>Only a person confirms the root cause</h2>
+        <p>RCA drafts start unconfirmed. A reviewer writes the confirmed cause and ticks an acknowledgement; editing it afterwards drops it back to unconfirmed.</p>
+      </div>
+      <figure class="shot" style="margin:0"><img src="img/rca.png" width="1265" height="1400" alt="An RCA draft marked UNCONFIRMED, waiting for a reviewer." loading="lazy"></figure>
+    </section>
+
+    <section class="wrap section">
+      <h2>Measured on a free local model</h2>
+      <table class="figures">
+        <tr><th scope="row">Right document in the top 5</th><td class="mono">20 of 20</td></tr>
+        <tr><th scope="row">Citations shown that are valid</th><td class="mono">100%</td></tr>
+        <tr><th scope="row">Unanswerable questions declined</th><td class="mono">3 of 3</td></tr>
+        <tr><th scope="row">Answerable questions declined anyway</th><td class="mono">24%</td></tr>
+        <tr><th scope="row">Median answer time, CPU only</th><td class="mono">12.6 s</td></tr>
+      </table>
+      <p class="note">Ollama llama3.2:3b, 20 questions in five languages. Reports are in the repository.</p>
+    </section>
+
+    <section class="wrap section split" id="run">
+      <div>
+        <h2>Run it in a few minutes</h2>
+        <p>Docker only. The mock provider needs no API key.</p>
+      </div>
+<pre><code>git clone https://github.com/danday-git/resolveAI && cd resolveAI
+cp .env.example .env
+sed -i 's/^\(LLM\|EMBEDDING\)_PROVIDER=openai/\1_PROVIDER=mock/' .env
+docker compose -f infra/docker-compose.yml --env-file .env --profile web up --build -d
+docker compose -f infra/docker-compose.yml exec api python -m app.seed --with-fixtures
+# http://localhost:3000, demo@resolveai.local / change-me-demo-password</code></pre>
+    </section>
+
+    <section class="wrap section">
+      <h2>Built with</h2>
+      <div class="stack">
+        <div><strong>Python 3.12</strong><span>FastAPI, SQLAlchemy</span></div>
+        <div><strong>PostgreSQL 16</strong><span>pgvector</span></div>
+        <div><strong>TypeScript</strong><span>Next.js, Tailwind</span></div>
+        <div><strong>Models</strong><span>Ollama, OpenAI, Anthropic, mock</span></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap footer">
+    <span>ResolveAI, a portfolio project. All demo data is synthetic.</span>
+    <a href="https://github.com/danday-git/resolveAI">github.com/danday-git/resolveAI</a>
+  </footer>
+</body>
+</html>

@@ -6,11 +6,19 @@ Built as a portfolio project to show production-minded AI engineering: grounded 
 
 > All demo data is synthetic. ResolveAI never executes commands and never auto-confirms a root cause.
 
+![The Assistant answering an Indonesian question from an English runbook, with the cited excerpt open](docs/screenshots/assistant.png)
+
+| Knowledge Base | Incident analysis | RCA draft (UNCONFIRMED) |
+|---|---|---|
+| ![Indexed runbooks and SOPs](docs/screenshots/knowledge.png) | ![Observations, possible causes and read-only checks](docs/screenshots/analysis.png) | ![An RCA draft waiting for a reviewer](docs/screenshots/rca.png) |
+
+Screens are from a local run with Ollama (`llama3.2:3b`, `nomic-embed-text-v2-moe`). A static showcase page lives in [`site/`](site/index.html) and deploys to GitHub Pages with the `pages` workflow.
+
 ## Features
 
 | Area | What it does |
 |---|---|
-| Knowledge Base | Upload PDF/TXT/MD (≤ 10 MB). Text extraction with page numbers, page-aware chunking with overlap, duplicate detection, embeddings in pgvector. Encrypted and scanned PDFs are rejected with a clear error. |
+| Knowledge Base | Upload PDF/TXT/MD (≤ 10 MB). Text extraction with page numbers, page-aware chunking with overlap, duplicate detection, embeddings in pgvector. Encrypted PDFs are rejected with a clear error; scanned pages are read with OCR. |
 | Assistant | Owner-filtered top-k retrieval, grounded answers with `{chunk_id, quote}` citations validated against stored text, abstention when evidence is missing, click-to-preview exact source excerpt. |
 | Incidents | Incident records with secret redaction before storage, deterministic log observations with line numbers, structured analysis (observations, suspected hypotheses, read-only verification steps, missing information, safety warnings). |
 | RCA | Draft generator (always `UNCONFIRMED`), editor, explicit human confirmation with reviewer + timestamp, Markdown export. |
