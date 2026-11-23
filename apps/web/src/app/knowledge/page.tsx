@@ -1,16 +1,17 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Badge, Button, Dialog, EmptyState, ErrorBox, LoadingRows, PageHeader, cx, input, td, th } from "@/components/ui";
-import { useQueryState } from "@/lib/url";
-import { api, errorText, type DocumentChunkPreview, type DocumentMeta, type Page } from "@/lib/api";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Badge, Button, Dialog, EmptyState, ErrorBox, LoadingRows, PageHeader, Pager, cx, input, td, th } from "@/components/ui";
+import { PAGE_SIZE, pageNumber, useDebounced, useQueryState } from "@/lib/url";
+import { api, errorText, type DocumentChunkPreview, type DocumentMeta, type DocumentPage, type Page } from "@/lib/api";
 
 const MAX_MB = 10;
 const ACCEPT = ".pdf,.txt,.md,application/pdf,text/plain,text/markdown";
 const kb = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
 
 function KnowledgeBase() {
-  const [docs, setDocs] = useState<DocumentMeta[] | null>(null);
+  const [list, setList] = useState<DocumentPage | null>(null);
+  const [tick, setTick] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState<string | null>(null);
   const [drag, setDrag] = useState(false);
@@ -21,13 +22,32 @@ function KnowledgeBase() {
   const [deleting, setDeleting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const load = useCallback(() => {
-    api<Page<DocumentMeta>>("/documents?limit=100")
-      .then((p) => setDocs(p.items))
-      .catch((e) => setError(errorText(e)));
-  }, []);
+  const [pageParam, setPage] = useQueryState("page", "1");
+  const page = pageNumber(pageParam);
+  const q = useDebounced(query.trim());
+  const load = useCallback(() => setTick((t) => t + 1), []);
 
-  useEffect(load, [load]);
+  useEffect(() => {
+    const params = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String((page - 1) * PAGE_SIZE) });
+    if (q) params.set("q", q);
+    if (status === "processing") params.append("status", "queued");
+    if (status !== "all") params.append("status", status);
+    let current = true; // a slower, older response must not replace a newer one
+    api<DocumentPage>(`/documents?${params}`)
+      .then((p) => {
+        if (!current) return;
+        // The page no longer exists (a delete or filter shortened the list): fall back to the last one.
+        if (!p.items.length && p.total) setPage(String(Math.ceil(p.total / PAGE_SIZE)));
+        else setList(p);
+      })
+      .catch((e) => current && setError(errorText(e)));
+    return () => {
+      current = false;
+    };
+  }, [q, status, page, tick, setPage]);
+  const docs = list?.items ?? null;
+  const filtered = q !== "" || status !== "all";
+
   useEffect(() => {
     if (!docs?.some((d) => d.status === "queued" || d.status === "processing")) return;
     const t = setTimeout(load, 1500);
@@ -79,15 +99,6 @@ function KnowledgeBase() {
     }
   }
 
-  const visible = useMemo(
-    () =>
-      (docs ?? []).filter(
-        (d) =>
-          d.filename.toLowerCase().includes(query.trim().toLowerCase()) &&
-          (status === "all" || d.status === status || (status === "processing" && d.status === "queued")),
-      ),
-    [docs, query, status],
-  );
 
   const actions = (d: DocumentMeta) => (
     <div className="flex justify-end gap-2">
@@ -196,8 +207,18 @@ function KnowledgeBase() {
       </div>
       <ErrorBox message={error} />
       <div className="flex flex-col gap-2 sm:flex-row">
-        <input className={`${input} sm:max-w-sm`} type="search" placeholder="Search by filename" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search documents" />
-        <select className={`${input} sm:w-44`} value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Filter by status">
+        <input className={`${input} sm:max-w-sm`} type="search" placeholder="Search by filename" value={query} onChange={(e) => {
+            setQuery(e.target.value);
+            setPage("1");
+          }}
+          aria-label="Search documents"
+        />
+        <select className={`${input} sm:w-44`} value={status} onChange={(e) => {
+            setStatus(e.target.value);
+            setPage("1");
+          }}
+          aria-label="Filter by status"
+        >
           <option value="all">All statuses</option>
           <option value="ready">Ready</option>
           <option value="processing">Processing</option>
@@ -206,6 +227,8 @@ function KnowledgeBase() {
       </div>
       {docs === null ? (
         !error && <LoadingRows rows={4} label="Loading documents" />
+      ) : docs.length === 0 && filtered ? (
+        <EmptyState title="No matching documents" description="Try a different filename or status filter." />
       ) : docs.length === 0 ? (
         <EmptyState
           title="No documents yet"
@@ -216,8 +239,6 @@ function KnowledgeBase() {
             </Button>
           }
         />
-      ) : visible.length === 0 ? (
-        <EmptyState title="No matching documents" description="Try a different filename or status filter." />
       ) : (
         <>
           <table className="hidden w-full text-sm md:table">
@@ -235,7 +256,7 @@ function KnowledgeBase() {
               </tr>
             </thead>
             <tbody>
-              {visible.map((d) => (
+              {docs.map((d) => (
                 <FragmentRow key={d.id} open={preview?.doc.id === d.id} detail={chunks(d)}>
                   <td className={cx(td, "break-all text-ink")}>
                     {d.filename}
@@ -259,7 +280,7 @@ function KnowledgeBase() {
             </tbody>
           </table>
           <ul className="border-t border-rule-2 md:hidden">
-            {visible.map((d) => (
+            {docs.map((d) => (
               <li key={d.id} className="space-y-3 border-b border-rule py-4">
                 <div className="flex items-start justify-between gap-3">
                   <p className="min-w-0 break-all text-ink">{d.filename}</p>
@@ -287,6 +308,7 @@ function KnowledgeBase() {
           </ul>
         </>
       )}
+      {list && <Pager page={page} total={list.total} size={PAGE_SIZE} onChange={(p) => setPage(String(p))} />}
       <Dialog
         open={!!pendingDelete}
         onClose={() => setPendingDelete(null)}

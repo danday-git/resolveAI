@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import func, select
@@ -197,16 +197,24 @@ def create_incident(
 def list_incidents(
     limit: int = 20,
     offset: int = 0,
+    q: str = Query(default="", max_length=200),
+    severity: IncidentSeverity | None = None,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     if not 1 <= limit <= 100 or offset < 0:
         raise ApiError(422, "VALIDATION_ERROR", "limit must be 1..100 and offset non-negative")
     condition = Incident.owner_id == user.id
+    if q.strip():
+        condition &= Incident.title.icontains(
+            q.strip(), autoescape=True
+        ) | Incident.service.icontains(q.strip(), autoescape=True)
+    if severity:
+        condition &= Incident.severity == severity
     items = db.scalars(
         select(Incident)
         .where(condition)
-        .order_by(Incident.created_at.desc())
+        .order_by(Incident.created_at.desc(), Incident.id)
         .limit(limit)
         .offset(offset)
     ).all()

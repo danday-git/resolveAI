@@ -46,6 +46,7 @@ export function errorText(e: unknown): string {
 }
 
 export type Page<T> = { items: T[]; total: number; limit: number; offset: number };
+export type DocumentPage = Page<DocumentMeta> & { status_counts: Partial<Record<DocumentMeta["status"], number>> };
 
 export type DocumentMeta = {
   id: string;

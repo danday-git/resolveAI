@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Badge, Card, EmptyState, ErrorBox, LoadingRows, PageHeader, Section, StatCard, btn, link, td, th } from "@/components/ui";
-import { api, errorText, type DocumentMeta, type Incident, type Page } from "@/lib/api";
+import { api, errorText, type DocumentMeta, type DocumentPage, type Incident, type Page } from "@/lib/api";
 import type { MetricsSummary } from "./metrics/page";
 
 const steps: [string, string, string][] = [
@@ -15,14 +15,14 @@ const steps: [string, string, string][] = [
 
 export default function Overview() {
   const [incidents, setIncidents] = useState<Page<Incident> | null>(null);
-  const [docs, setDocs] = useState<Page<DocumentMeta> | null>(null);
+  const [docs, setDocs] = useState<DocumentPage | null>(null);
   const [metrics, setMetrics] = useState<MetricsSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
       api<Page<Incident>>("/incidents?limit=5"),
-      api<Page<DocumentMeta>>("/documents?limit=100"),
+      api<DocumentPage>("/documents?limit=1"),
       api<MetricsSummary>("/metrics/summary"),
     ])
       .then(([i, d, m]) => {
@@ -33,7 +33,7 @@ export default function Overview() {
       .catch((e) => setError(errorText(e)));
   }, []);
 
-  const count = (...s: string[]) => docs?.items.filter((d) => s.includes(d.status)).length ?? 0;
+  const count = (...s: DocumentMeta["status"][]) => s.reduce((n, k) => n + (docs?.status_counts[k] ?? 0), 0);
   const cost = metrics?.llm.estimated_cost_usd;
   const kb = [
     ["Ready", count("ready"), "bg-ok"],

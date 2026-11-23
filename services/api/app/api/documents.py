@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Annotated
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Query, Request, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -126,21 +126,34 @@ def _document_json(document: Document) -> dict:
 def list_documents(
     limit: int = 20,
     offset: int = 0,
+    q: str = Query(default="", max_length=120),
+    status: list[DocumentStatus] = Query(default=[]),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     if not 1 <= limit <= 100 or offset < 0:
         raise ApiError(422, "VALIDATION_ERROR", "limit must be 1..100 and offset non-negative")
-    query = (
-        select(Document).where(Document.owner_id == user.id).order_by(Document.created_at.desc())
-    )
-    items = db.scalars(query.limit(limit).offset(offset)).all()
-    total = db.scalar(
-        select(func.count()).select_from(Document).where(Document.owner_id == user.id)
-    )
+    owned = Document.owner_id == user.id
+    conditions = [owned]
+    if q.strip():
+        conditions.append(Document.filename.icontains(q.strip(), autoescape=True))
+    if status:
+        conditions.append(Document.status.in_(status))
+    items = db.scalars(
+        select(Document)
+        .where(*conditions)
+        .order_by(Document.created_at.desc(), Document.id)
+        .limit(limit)
+        .offset(offset)
+    ).all()
+    counts = db.execute(
+        select(Document.status, func.count()).where(owned).group_by(Document.status)
+    ).all()
     return {
         "items": [_document_json(item) for item in items],
-        "total": total,
+        "total": db.scalar(select(func.count()).select_from(Document).where(*conditions)),
+        # Across the whole knowledge base, whatever the filter or page.
+        "status_counts": {state.value: count for state, count in counts},
         "limit": limit,
         "offset": offset,
     }

@@ -1,9 +1,9 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useState } from "react";
-import { Alert, Badge, Button, Empty, ErrorBox, LoadingRows, PageHeader, Tabs, cx, input, td, th } from "@/components/ui";
+import { Alert, Badge, Button, Empty, ErrorBox, LoadingRows, PageHeader, Pager, Tabs, cx, input, td, th } from "@/components/ui";
 import { api, errorText, patch, post, type AdminUser, type AuditEvent, type Page } from "@/lib/api";
-import { useQueryState } from "@/lib/url";
+import { PAGE_SIZE, useQueryState } from "@/lib/url";
 
 function Users({ me }: { me: string | null }) {
   const [users, setUsers] = useState<AdminUser[] | null>(null);
@@ -102,15 +102,13 @@ function Users({ me }: { me: string | null }) {
   );
 }
 
-const PAGE = 50;
-
 function Audit() {
   const [page, setPage] = useState<Page<AuditEvent> | null>(null);
   const [offset, setOffset] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api<Page<AuditEvent>>(`/admin/audit?limit=${PAGE}&offset=${offset}`)
+    api<Page<AuditEvent>>(`/admin/audit?limit=${PAGE_SIZE}&offset=${offset}`)
       .then(setPage)
       .catch((e) => setError(errorText(e)));
   }, [offset]);
@@ -151,19 +149,7 @@ function Audit() {
           </tbody>
         </table>
       </div>
-      <div className="flex items-center justify-between gap-4 text-sm text-muted">
-        <p className="measured">
-          {offset + 1} to {offset + page.items.length} of {page.total}
-        </p>
-        <div className="flex gap-2">
-          <Button variant="secondary" size="sm" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE))}>
-            Newer
-          </Button>
-          <Button variant="secondary" size="sm" disabled={offset + PAGE >= page.total} onClick={() => setOffset(offset + PAGE)}>
-            Older
-          </Button>
-        </div>
-      </div>
+      <Pager page={offset / PAGE_SIZE + 1} total={page.total} size={PAGE_SIZE} onChange={(p) => setOffset((p - 1) * PAGE_SIZE)} />
     </div>
   );
 }

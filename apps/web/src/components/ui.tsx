@@ -406,3 +406,23 @@ export function Highlight({ text, quote }: { text: string; quote: string }) {
 // Tables sit straight on the page: sentence-case heads, horizontal rules only.
 export const th = "whitespace-nowrap border-b border-rule-2 py-2 pr-3 text-left text-sm font-normal text-muted last:pr-0 sm:pr-6";
 export const td = "border-b border-rule py-3 pr-3 align-top last:pr-0 sm:pr-6";
+
+/** Previous and Next for a list the server pages; renders nothing while everything fits on one page. */
+export function Pager({ page, total, size, onChange }: { page: number; total: number; size: number; onChange: (page: number) => void }) {
+  if (total <= size) return null;
+  return (
+    <nav aria-label="Pagination" className="flex items-center justify-between gap-4 text-sm text-muted">
+      <p className="measured">
+        {(page - 1) * size + 1} to {Math.min(page * size, total)} of {total}
+      </p>
+      <div className="flex gap-2">
+        <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => onChange(page - 1)}>
+          Previous
+        </Button>
+        <Button variant="secondary" size="sm" disabled={page * size >= total} onClick={() => onChange(page + 1)}>
+          Next
+        </Button>
+      </div>
+    </nav>
+  );
+}

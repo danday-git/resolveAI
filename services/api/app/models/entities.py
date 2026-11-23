@@ -68,6 +68,14 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class RateLimit(Base):
+    __tablename__ = "rate_limits"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
+    count: Mapped[int] = mapped_column(Integer)
+
+
 class PasswordResetToken(Base):
     __tablename__ = "password_reset_tokens"
 

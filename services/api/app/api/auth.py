@@ -6,8 +6,6 @@ import secrets
 import smtplib
 from datetime import UTC, datetime, timedelta
 from email.message import EmailMessage
-from threading import Lock
-from time import monotonic
 from typing import Annotated
 from urllib.parse import urlencode
 
@@ -25,14 +23,12 @@ from app.core.audit import audit
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.errors import ApiError
+from app.core.limits import rate_limit
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models import PasswordResetToken, User
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
-_attempts: dict[str, list[float]] = {}
-_lock = Lock()
-_last_prune: float | None = None
 
 
 class LoginRequest(BaseModel):
@@ -80,28 +76,6 @@ class ResetConfirmRequest(BaseModel):
     token: str
     new_password: SecretStr
     _password = field_validator("new_password")(_valid_password)
-
-
-def _check_login_limit(key: str, limit: int = 10) -> None:
-    global _last_prune
-    now = monotonic()
-    with _lock:
-        recent = [stamp for stamp in _attempts.get(key, []) if now - stamp < 60]
-        if recent:
-            _attempts[key] = recent
-        else:
-            _attempts.pop(key, None)
-        rate_limited = len(recent) >= limit
-        if not rate_limited:
-            recent.append(now)
-            _attempts[key] = recent
-        if len(_attempts) > 10_000 and (_last_prune is None or now - _last_prune >= 60):
-            _last_prune = now
-            for attempt_key, stamps in list(_attempts.items()):
-                if not any(now - stamp < 60 for stamp in stamps):
-                    del _attempts[attempt_key]
-        if rate_limited:
-            raise ApiError(429, "RATE_LIMITED", "Too many login attempts")
 
 
 def _client(request: Request) -> str:
@@ -162,7 +136,7 @@ def login(
     response: Response,
     db: Annotated[Session, Depends(get_db)],
 ):
-    _check_login_limit(f"{body.email}:{_client(request)}")
+    rate_limit(f"login:{body.email}:{_client(request)}", request, 10)
     user = db.scalar(select(User).where(User.email == body.email))
     if (
         user is None
@@ -186,7 +160,7 @@ def register(
 ):
     if not get_settings().allow_registration:
         raise ApiError(403, "REGISTRATION_CLOSED", "Registration is closed; ask an administrator")
-    _check_login_limit(f"register:{_client(request)}", 5)
+    rate_limit(f"register:{_client(request)}", request, 5)
     if db.scalar(select(User.id).where(User.email == body.email)):
         raise ApiError(409, "EMAIL_TAKEN", "An account with this email already exists")
     # The first account on an empty install has to be able to manage the rest.
@@ -211,7 +185,7 @@ def change_password(
     db: Annotated[Session, Depends(get_db)],
     user: Annotated[User, Depends(get_current_user)],
 ):
-    _check_login_limit(f"password:{user.id}", 5)
+    rate_limit(f"password:{user.id}", request, 5)
     if not verify_password(body.current_password.get_secret_value(), user.password_hash):
         raise ApiError(400, "INVALID_CREDENTIALS", "Current password is incorrect")
     set_password(user, body.new_password.get_secret_value())
@@ -242,7 +216,7 @@ def request_password_reset(
     body: EmailRequest, request: Request, db: Annotated[Session, Depends(get_db)]
 ):
     """Always 202, so the response does not reveal whether the email has an account."""
-    _check_login_limit(f"reset:{_client(request)}", 5)
+    rate_limit(f"reset:{_client(request)}", request, 5)
     user = db.scalar(select(User).where(User.email == body.email, User.is_active))
     # Without SMTP there is no safe way to deliver a link; an administrator issues one instead.
     if user is not None and get_settings().smtp_host:
@@ -260,7 +234,7 @@ def request_password_reset(
 def confirm_password_reset(
     body: ResetConfirmRequest, request: Request, db: Annotated[Session, Depends(get_db)]
 ):
-    _check_login_limit(f"reset-confirm:{_client(request)}", 10)
+    rate_limit(f"reset-confirm:{_client(request)}", request, 10)
     row = db.scalar(
         select(PasswordResetToken)
         .where(

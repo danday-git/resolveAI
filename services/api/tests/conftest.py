@@ -21,7 +21,6 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from alembic import command
-from app.api.auth import _attempts
 from app.core.database import SessionLocal, engine
 from app.core.limits import reset_limits
 from app.core.security import hash_password
@@ -49,7 +48,6 @@ def migrate_database():
 @pytest.fixture(autouse=True)
 def clean_database(migrate_database):
     reset_limits()
-    _attempts.clear()
     with engine.begin() as connection:
         connection.execute(
             text(
