@@ -175,7 +175,10 @@ def register(
     if not get_settings().allow_registration:
         raise ApiError(403, "REGISTRATION_CLOSED", "Registration is closed; ask an administrator")
     rate_limit(f"register:{_client(request)}", request, 5)
-    if db.scalar(select(User.id).where(User.email == body.email)):
+    # The administrator's address is the seed's: signed up for first, it would leave the
+    # install without an administrator, or hand that person the account.
+    reserved = body.email == get_settings().demo_user_email.lower()
+    if reserved or db.scalar(select(User.id).where(User.email == body.email)):
         raise ApiError(409, "EMAIL_TAKEN", "An account with this email already exists")
     # Never an administrator: on a public install anyone could sign up first.
     # The administrator is created by `python -m app.seed`.
@@ -344,6 +347,8 @@ def _oidc_user(db: Session, request: Request, claims: dict) -> User | None:
     if user is None:
         user = db.scalar(select(User).where(User.email == email))
         if user is None:
+            if email == get_settings().demo_user_email.lower():
+                return None  # reserved for the seed, as in register
             user = User(email=email, password_hash="!")
             db.add(user)
         elif user.oidc_subject is None:

@@ -46,22 +46,19 @@ def test_first_account_on_an_empty_install_is_not_admin(clean_database, client):
     assert register(client, "first@example.com").json()["user"]["role"] == "member"
 
 
-def test_seed_takes_over_the_administrator_address_from_an_earlier_sign_up(
-    clean_database, client, tmp_path
-):
+def test_administrator_address_cannot_be_taken_before_the_seed(clean_database, client, tmp_path):
     with SessionLocal() as db:
         db.query(User).delete()
         db.commit()
     settings = get_settings()
-    squatter = register(client, settings.demo_user_email)
-    assert squatter.json()["user"]["role"] == "member"
+    assert register(client, settings.demo_user_email).status_code == 409
+    with SessionLocal() as db:
+        claims = {"iss": "i", "sub": "s", "email": settings.demo_user_email, "email_verified": True}
+        assert auth._oidc_user(db, None, claims) is None
 
     seed(tmp_path)
 
-    assert client.get("/api/v1/auth/me", headers=bearer(squatter)).status_code == 401
-    creds = {"email": settings.demo_user_email, "password": PASSWORD}
-    assert client.post("/api/v1/auth/login", json=creds).status_code == 401
-    creds["password"] = settings.demo_user_password
+    creds = {"email": settings.demo_user_email, "password": settings.demo_user_password}
     assert client.post("/api/v1/auth/login", json=creds).json()["user"]["role"] == "admin"
 
 
