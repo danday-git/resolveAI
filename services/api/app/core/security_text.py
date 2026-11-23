@@ -68,15 +68,28 @@ def redact(text: str) -> tuple[str, dict[str, int]]:
     return text, summary
 
 
-def _count_secret(summary: dict[str, int], match: re.Match[str]) -> str:
-    if not _SECRET_KEY.search(match.group("key")):
-        return match.group(0)
-    summary["secret"] += 1
+def _count_secret(
+    summary: dict[str, int], match: re.Match[str], *, allow_nested: bool = True
+) -> str:
     key_quote = match.group("key_quote")
+    key = match.group("key")
+    separator = match.group("separator")
     value_quote = match.group("value_quote") or ""
+    prefix = f"{key_quote}{key}{key_quote}{separator}"
+    if not _SECRET_KEY.search(key):
+        if not allow_nested:
+            return match.group(0)
+        value = match.group(0)[len(prefix) :]
+        if value_quote:
+            value = value[1:-1]
+        value = _SECRET.sub(
+            lambda nested: _count_secret(summary, nested, allow_nested=False),
+            value,
+        )
+        return f"{prefix}{value_quote}{value}{value_quote}"
+    summary["secret"] += 1
     return (
-        f"{key_quote}{match.group('key')}{key_quote}{match.group('separator')}"
-        f"{value_quote}[REDACTED]{value_quote}"
+        f"{prefix}{value_quote}[REDACTED]{value_quote}"
     )
 
 
