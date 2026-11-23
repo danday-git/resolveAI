@@ -1,4 +1,5 @@
 import logging
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from sqlalchemy import select
@@ -16,13 +17,18 @@ from app.services.llm.usage import record_llm_call
 logger = logging.getLogger(__name__)
 
 
-def ingest_document(document_id, embedder: EmbeddingProvider | None = None) -> None:
+def ingest_document(
+    document_id, embedder: EmbeddingProvider | None = None, max_attempts: int = 1
+) -> None:
+    """Failures that may pass (provider down, lost connection) requeue until max_attempts."""
     settings = get_settings()
     with SessionLocal() as db:
         document = db.get(Document, document_id)
         if document is None:
             return
         document.status = DocumentStatus.PROCESSING
+        document.locked_at = datetime.now(UTC)
+        document.attempts += 1
         db.commit()
         try:
             data = Path(document.storage_path).read_bytes()
@@ -93,11 +99,21 @@ def ingest_document(document_id, embedder: EmbeddingProvider | None = None) -> N
                 owner_id=document.owner_id,
                 error_category=exc.category,
             )
-            _fail(db, document, "EMBEDDING_FAILED")
+            _retry_or_fail(db, document, "EMBEDDING_FAILED", max_attempts)
         except Exception:
             db.rollback()
             logger.warning("Document ingestion failed")
-            _fail(db, document, "INGESTION_FAILED")
+            _retry_or_fail(db, document, "INGESTION_FAILED", max_attempts)
+
+
+def _retry_or_fail(db, document: Document, code: str, max_attempts: int) -> None:
+    if document.attempts >= max_attempts:
+        return _fail(db, document, code)
+    document.status = DocumentStatus.QUEUED
+    document.next_attempt_at = datetime.now(UTC) + timedelta(
+        seconds=30 * 2 ** (document.attempts - 1)
+    )
+    db.commit()
 
 
 def _fail(db, document: Document, code: str) -> None:

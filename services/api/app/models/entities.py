@@ -124,6 +124,9 @@ class Document(Base):
     embedding_provider: Mapped[str | None] = mapped_column(String(40))
     embedding_model: Mapped[str | None] = mapped_column(String(100))
     ingestion_version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    locked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

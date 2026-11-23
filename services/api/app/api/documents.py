@@ -102,7 +102,8 @@ def upload_document(
             "This document has already been uploaded",
             {"document_id": str(duplicate.id) if duplicate else None},
         ) from None
-    background_tasks.add_task(ingest_document, document.id)
+    if get_settings().ingest_inline:
+        background_tasks.add_task(ingest_document, document.id)
     return _document_json(document)
 
 

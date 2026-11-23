@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     demo_user_password: str | None = None
     upload_dir: str = "/data/uploads"
     max_upload_mb: int = 10
+    # True ingests inside the API process (one-process dev, tests). False leaves uploads queued
+    # for `python -m app.worker`, which also retries and recovers interrupted documents.
+    ingest_inline: bool = True
+    ingest_max_attempts: int = 3
+    ingest_lock_minutes: int = 15
     llm_provider: Literal["openai", "anthropic", "ollama", "mock"] = "openai"
     llm_model: str | None = None
     embedding_provider: Literal["openai", "anthropic", "ollama", "mock"] | None = None

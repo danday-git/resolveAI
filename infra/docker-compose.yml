@@ -24,6 +24,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://resolveai:resolveai@db:5432/resolveai
       UPLOAD_DIR: /data/uploads
+      INGEST_INLINE: "false"
     depends_on:
       db:
         condition: service_healthy
@@ -40,6 +41,24 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+
+  # Ingests uploads from the queue, retries failures and recovers interrupted documents.
+  worker:
+    build:
+      context: ..
+      dockerfile: services/api/Dockerfile
+    command: ["python", "-m", "app.worker"]
+    env_file:
+      - ../.env
+    environment:
+      DATABASE_URL: postgresql+psycopg://resolveai:resolveai@db:5432/resolveai
+      UPLOAD_DIR: /data/uploads
+    depends_on:
+      api:
+        condition: service_healthy
+    volumes:
+      - resolveai_uploads:/data/uploads
+    restart: unless-stopped
 
   web:
     profiles: ["web"]
