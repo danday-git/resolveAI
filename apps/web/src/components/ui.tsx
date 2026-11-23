@@ -65,16 +65,15 @@ export const buttonSecondary =
 export const input = "w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none";
 
 export function Highlight({ text, quote }: { text: string; quote: string }) {
-  const norm = (s: string) => s.replace(/\s+/g, " ").toLowerCase();
-  const flat = text.replace(/\s+/g, " ");
-  const at = norm(flat).indexOf(norm(quote).trim());
-  if (!quote || at < 0) return <span className="whitespace-pre-wrap">{text}</span>;
-  const end = at + norm(quote).trim().length;
+  const words = quote.trim().split(/\s+/).filter(Boolean).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const match = words.length ? new RegExp(words.join("\\s+"), "i").exec(text) : null;
+  if (!match) return <span className="whitespace-pre-wrap">{text}</span>;
+  const end = match.index + match[0].length;
   return (
     <span className="whitespace-pre-wrap">
-      {flat.slice(0, at)}
-      <mark className="rounded bg-yellow-200 px-0.5">{flat.slice(at, end)}</mark>
-      {flat.slice(end)}
+      {text.slice(0, match.index)}
+      <mark className="rounded bg-yellow-200 px-0.5">{text.slice(match.index, end)}</mark>
+      {text.slice(end)}
     </span>
   );
 }
