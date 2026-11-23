@@ -49,6 +49,7 @@ export function ThemeToggle({ className }: { className?: string }) {
         window.dispatchEvent(new Event("themechange"));
       }}
     >
+      <Icon name={light ? "moon" : "sun"} />
       {light ? "Dark mode" : "Light mode"}
     </button>
   );
@@ -132,13 +133,15 @@ export function AppShell({ children }: { children: ReactNode }) {
         onClick={() => setDrawer(false)}
         aria-current={path === "/account" ? "page" : undefined}
         title={me ? `Account: ${me.email}` : undefined}
-        className="measured block truncate rounded-pill px-3 py-1 text-muted no-underline transition-colors hover:text-ink active:bg-rule aria-[current]:text-ink"
+        className="measured flex items-center gap-2.5 rounded-pill px-3 py-1 text-muted no-underline transition-colors hover:text-ink active:bg-rule aria-[current]:text-ink"
       >
-        {me?.email ?? "…"}
+        <Icon name="user" />
+        <span className="truncate">{me?.email ?? "…"}</span>
       </Link>
       <div className="mt-1 flex items-center justify-between gap-2">
         <ThemeToggle />
         <button className={btn("ghost", "sm")} onClick={signOut}>
+          <Icon name="logout" />
           Sign out
         </button>
       </div>

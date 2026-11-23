@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Icon } from "@/components/icons";
 import { Badge, Card, EmptyState, ErrorBox, LoadingRows, PageHeader, Section, StatCard, btn, link, td, th } from "@/components/ui";
 import { api, errorText, type DocumentMeta, type DocumentPage, type Incident, type Page } from "@/lib/api";
 import type { MetricsSummary } from "./metrics/page";
@@ -49,9 +50,11 @@ export default function Overview() {
         actions={
           <>
             <Link href="/assistant" className={btn("secondary")}>
+              <Icon name="chat" />
               Ask assistant
             </Link>
             <Link href="/incidents?new=1" className={btn("primary")}>
+              <Icon name="plus" />
               New incident
             </Link>
           </>
@@ -64,6 +67,7 @@ export default function Overview() {
           actions={
             <Link className={`${link} text-sm text-ink-2`} href="/incidents">
               View all
+              <Icon name="chevronRight" className="ml-0.5 inline h-3.5 w-3.5 align-[-0.15em]" />
             </Link>
           }
         >
@@ -75,6 +79,7 @@ export default function Overview() {
               description="Create an incident to get structured observations and suspected causes."
               action={
                 <Link href="/incidents?new=1" className={btn("secondary", "sm")}>
+                  <Icon name="plus" />
                   New incident
                 </Link>
               }
@@ -131,6 +136,7 @@ export default function Overview() {
             actions={
               <Link className={`${link} text-sm text-ink-2`} href="/knowledge">
                 Manage
+                <Icon name="chevronRight" className="ml-0.5 inline h-3.5 w-3.5 align-[-0.15em]" />
               </Link>
             }
           >

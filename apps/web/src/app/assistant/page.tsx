@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Icon } from "@/components/icons";
 import { AiLabel, Alert, Badge, Button, Card, Highlight, LoadingRows, PageHeader, Spinner, cx, input } from "@/components/ui";
 import { ApiError, api, errorText, post, type ChatResponse, type Chunk, type Citation } from "@/lib/api";
 
@@ -144,7 +145,7 @@ export default function Assistant() {
               maxLength={2000}
               aria-label="Question"
             />
-            <Button type="submit" loading={busy} disabled={!question.trim()}>
+            <Button type="submit" icon="send" loading={busy} disabled={!question.trim()}>
               Ask
             </Button>
           </div>
@@ -187,7 +188,7 @@ function Answer({ r, onCite, active, source }: { r: ChatResponse; onCite: (c: Ci
                     onClick={() => onCite(c)}
                     aria-pressed={on}
                     className={cx(
-                      "grid w-full grid-cols-[1.5rem_minmax(0,1fr)] gap-x-2 px-2 py-2.5 text-left text-sm transition-colors duration-[var(--dur-micro)] hover:bg-paper-2 active:bg-rule",
+                      "grid w-full grid-cols-[1.5rem_minmax(0,1fr)_auto] gap-x-2 px-2 py-2.5 text-left text-sm transition-colors duration-[var(--dur-micro)] hover:bg-paper-2 active:bg-rule",
                       on && "bg-paper-2",
                     )}
                   >
@@ -198,6 +199,7 @@ function Answer({ r, onCite, active, source }: { r: ChatResponse; onCite: (c: Ci
                       </span>
                       <span className="mt-0.5 line-clamp-2 block text-muted">“{c.quote}”</span>
                     </span>
+                    <Icon name="chevronRight" className="mt-0.5 h-4 w-4 text-muted" />
                   </button>
                 </li>
               );

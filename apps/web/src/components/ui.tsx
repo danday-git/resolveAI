@@ -416,11 +416,12 @@ export function Pager({ page, total, size, onChange }: { page: number; total: nu
         {(page - 1) * size + 1} to {Math.min(page * size, total)} of {total}
       </p>
       <div className="flex gap-2">
-        <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => onChange(page - 1)}>
+        <Button variant="secondary" size="sm" icon="chevronLeft" disabled={page <= 1} onClick={() => onChange(page - 1)}>
           Previous
         </Button>
         <Button variant="secondary" size="sm" disabled={page * size >= total} onClick={() => onChange(page + 1)}>
           Next
+          <Icon name="chevronRight" />
         </Button>
       </div>
     </nav>

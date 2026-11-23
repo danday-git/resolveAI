@@ -72,7 +72,7 @@ function IncidentsPage() {
         description="Record symptoms and sanitized logs, then get observations, suspected causes and read-only checks."
         actions={
           !creating && (
-            <Button onClick={() => setCreating("1")}>
+            <Button icon="plus" onClick={() => setCreating("1")}>
               New incident
             </Button>
           )
@@ -159,7 +159,7 @@ function IncidentsPage() {
           description="An incident holds the symptoms and sanitized logs for one investigation. Create one to start a structured analysis."
           action={
             !creating && (
-              <Button variant="secondary" size="sm" onClick={() => setCreating("1")}>
+              <Button variant="secondary" size="sm" icon="plus" onClick={() => setCreating("1")}>
                 New incident
               </Button>
             )

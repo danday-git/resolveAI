@@ -110,10 +110,11 @@ function KnowledgeBase() {
         onClick={() => open(d)}
         aria-label={`Preview ${d.filename}`}
         aria-expanded={preview?.doc.id === d.id}
+        icon={preview?.doc.id === d.id ? "eyeOff" : "eye"}
       >
         {preview?.doc.id === d.id ? "Hide" : "Preview"}
       </Button>
-      <Button variant="danger" size="sm" onClick={() => setPendingDelete(d)} aria-label={`Delete ${d.filename}`}>
+      <Button variant="danger" size="sm" icon="trash" onClick={() => setPendingDelete(d)} aria-label={`Delete ${d.filename}`}>
         Delete
       </Button>
     </div>
@@ -162,7 +163,7 @@ function KnowledgeBase() {
         title="Knowledge Base"
         description="Runbooks and SOPs the assistant may cite. Documents are only visible to you."
         actions={
-          <Button loading={!!uploading} onClick={() => fileRef.current?.click()}>
+          <Button icon="upload" loading={!!uploading} onClick={() => fileRef.current?.click()}>
             Upload document
           </Button>
         }
@@ -201,7 +202,7 @@ function KnowledgeBase() {
             Text-based PDF, TXT or MD up to {MAX_MB}&nbsp;MB. Scanned PDFs (OCR) are not supported. Use synthetic or permitted documents only.
           </p>
         </div>
-        <Button variant="secondary" size="sm" disabled={!!uploading} onClick={() => fileRef.current?.click()}>
+        <Button variant="secondary" size="sm" icon="file" disabled={!!uploading} onClick={() => fileRef.current?.click()}>
           Browse files
         </Button>
       </div>
@@ -234,7 +235,7 @@ function KnowledgeBase() {
           title="No documents yet"
           description="The assistant can only answer from what is uploaded here. Add an SOP or runbook to get started."
           action={
-            <Button variant="secondary" size="sm" onClick={() => fileRef.current?.click()}>
+            <Button variant="secondary" size="sm" icon="upload" onClick={() => fileRef.current?.click()}>
               Upload document
             </Button>
           }
@@ -319,7 +320,7 @@ function KnowledgeBase() {
             <Button variant="secondary" onClick={() => setPendingDelete(null)}>
               Cancel
             </Button>
-            <Button variant="danger" loading={deleting} onClick={confirmDelete}>
+            <Button variant="danger" icon="trash" loading={deleting} onClick={confirmDelete}>
               Delete document
             </Button>
           </>

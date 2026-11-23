@@ -34,7 +34,7 @@ Motion is limited to 120ms colour transitions, the spinner and the loading skele
 
 | Component | Purpose |
 |---|---|
-| `Button`, `btn(variant, size)` | Variants: primary (amber), secondary, ghost, danger. Controls are 32 or 36px high with a 44px hit area. `loading` shows a spinner and sets `aria-busy`. |
+| `Button`, `btn(variant, size)` | Variants: primary (amber), secondary, ghost, danger. Controls are 32 or 36px high with a 44px hit area. `loading` shows a spinner and sets `aria-busy`. An action with a clear metaphor carries an icon before its label (`icon` prop, or `<Icon>` inside a `btn()` link); a control that moves you on (Next, Open the RCA, View all) puts a chevron after it. Cancel, Save and form submits stay text only. |
 | `Field`, `input` | Label, hint and error with `id` and `aria-describedby` wiring; one shared class for inputs, selects and textareas. |
 | `Card`, `Section` | A hairline panel with a header, and an unboxed titled section for tables. |
 | `.panels` | A grid whose cells share hairline seams. Used for figures and side-by-side records instead of separate cards. |
