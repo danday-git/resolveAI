@@ -18,6 +18,7 @@ import json
 import os
 import platform
 import re
+import secrets
 import statistics
 import subprocess
 import sys
@@ -34,7 +35,6 @@ DATASET_DEFAULT = EVALS_DIR / "datasets" / "v1.jsonl"
 FIXTURES_DEFAULT = EVALS_DIR / "fixtures" / "docs"
 REPORTS_DEFAULT = EVALS_DIR / "reports"
 EVAL_EMAIL = "eval@resolveai.local"
-EVAL_PASSWORD = "eval-only-password-not-secret"
 
 sys.path.insert(0, str(API_DIR))
 
@@ -71,26 +71,31 @@ class Client:
         return self.http.delete(f"/api/v1{path}", headers=self.headers)
 
 
-def in_process_http() -> Any:
+def in_process_http() -> tuple[Any, str]:
     from fastapi.testclient import TestClient
 
     from app.main import app
 
-    _ensure_eval_user()
-    return TestClient(app).__enter__()
+    password = _ensure_eval_user()
+    return TestClient(app).__enter__(), password
 
 
-def _ensure_eval_user() -> None:
+def _ensure_eval_user() -> str:
     from sqlalchemy import select
 
     from app.core.database import SessionLocal
     from app.core.security import hash_password
     from app.models import User
 
+    password = secrets.token_urlsafe(24)
     with SessionLocal() as db:
-        if not db.scalar(select(User).where(User.email == EVAL_EMAIL)):
-            db.add(User(email=EVAL_EMAIL, password_hash=hash_password(EVAL_PASSWORD)))
-            db.commit()
+        user = db.scalar(select(User).where(User.email == EVAL_EMAIL))
+        if user is None:
+            db.add(User(email=EVAL_EMAIL, password_hash=hash_password(password)))
+        else:
+            user.password_hash = hash_password(password)
+        db.commit()
+    return password
 
 
 def login(http: Any, email: str, password: str) -> Client:
@@ -368,7 +373,7 @@ def main() -> int:
     ap.add_argument("--out-dir", type=Path, default=REPORTS_DEFAULT)
     ap.add_argument("--base-url", help="Evaluate a running API instead of in-process")
     ap.add_argument("--email", default=os.getenv("EVAL_EMAIL", EVAL_EMAIL))
-    ap.add_argument("--password", default=os.getenv("EVAL_PASSWORD", EVAL_PASSWORD))
+    ap.add_argument("--password", default=os.getenv("EVAL_PASSWORD"))
     ap.add_argument("--top-k", type=int, default=5)
     ap.add_argument("--baseline", action="store_true", help="Also run the no-retrieval baseline")
     ap.add_argument("--name", help="Report file stem (default: <dataset>-<provider>-<model>)")
@@ -378,10 +383,14 @@ def main() -> int:
     if args.base_url:
         import httpx
 
+        if not args.password:
+            ap.error("--password or EVAL_PASSWORD is required with --base-url")
         http = httpx.Client(base_url=args.base_url, timeout=120)
+        email, password = args.email, args.password
     else:
-        http = in_process_http()
-    client = login(http, args.email, args.password)
+        http, password = in_process_http()
+        email = EVAL_EMAIL
+    client = login(http, email, password)
     needed = {f for d in dataset for f in d["document_fixture_ids"]}
     chunk_map = load_fixtures(client, args.fixtures_dir, needed)
     rag = run_rag(client, dataset, chunk_map, args.top_k)
