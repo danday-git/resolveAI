@@ -160,7 +160,7 @@ function IncidentsPage() {
                 <td className={td}>
                   <Badge value={i.severity} />
                 </td>
-                <td className={td}>
+                <td className={`${td} [overflow-wrap:anywhere]`}>
                   <Link href={`/incidents/${i.id}`} className={`${link} text-ink`}>
                     {i.title}
                   </Link>
