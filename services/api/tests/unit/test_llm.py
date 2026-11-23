@@ -61,6 +61,32 @@ def test_mock_chat_selects_relevant_verbatim_sentences_and_skips_headings():
     assert [item["quote"] for item in answer["citations"]] == expected
 
 
+def test_mock_chat_keeps_selected_sentences_in_one_chunk():
+    result = MockChatProvider().chat(
+        [
+            ChatMessage("system", "TASK: grounded_qa"),
+            ChatMessage(
+                "user",
+                '<chunk id="current" source="current.md" page="1" flagged="false">\n'
+                "# Current backup policy\n"
+                "Production database backups are retained for 30 days.\n"
+                "This retention period applies to all production database backups.\n"
+                "</chunk>\n"
+                '<chunk id="old" source="old.md" page="1" flagged="false">\n'
+                "# Archived backup policy\n"
+                "Production database backups are retained for 14 days.\n"
+                "</chunk>\n"
+                "<question>How many days are production database backups retained?</question>",
+            ),
+        ]
+    )
+
+    answer = json.loads(result.text)
+
+    assert "14 days" not in answer["answer"]
+    assert all(citation["chunk_id"] == "current" for citation in answer["citations"])
+
+
 def test_mock_analysis_groups_categories_and_caps_distinct_read_only_checks():
     provider = MockChatProvider()
     result = provider.chat(

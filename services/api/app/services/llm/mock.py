@@ -228,7 +228,11 @@ class MockChatProvider(ChatProvider):
                     if score and len(sentence) >= 8:
                         candidates.append((score, order, chunk_id, sentence))
                     order += 1
-        selected = sorted(candidates, key=lambda item: (-item[0], item[1]))[:2]
+        ranked = sorted(candidates, key=lambda item: (-item[0], item[1]))
+        selected = ranked[:1]
+        if selected:
+            selected.extend(item for item in ranked[1:] if item[2] == selected[0][2])
+            selected = selected[:2]
         if not selected or selected[0][0] < 2:
             return {"answer": "", "abstain": True, "citations": []}
         return {
