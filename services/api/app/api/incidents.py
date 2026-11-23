@@ -449,7 +449,6 @@ def patch_rca(
     if reset:
         report.cause_status = CauseStatus.UNCONFIRMED
         report.status = RCAStatus.DRAFT
-        report.body_json["confirmed_cause"] = ""
     report.audit_json = [*(report.audit_json or []), _audit("edited", user)]
     if reset:
         report.audit_json.append(_audit("review_reset", user))

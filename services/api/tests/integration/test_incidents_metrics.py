@@ -100,6 +100,7 @@ def test_analyze_observations_rca_reset_metrics_and_confirm(client, auth_headers
         json={"body_json": {**body, "incident_summary": "Edited"}},
     )
     assert edited.json()["cause_status"] == "UNCONFIRMED"
+    assert edited.json()["body_json"]["confirmed_cause"] == body["confirmed_cause"]
     assert edited.json()["reviewer_id"] is None
     summary = client.get("/api/v1/metrics/summary", headers=auth_headers).json()
     assert summary["llm"]["calls"] >= 2
