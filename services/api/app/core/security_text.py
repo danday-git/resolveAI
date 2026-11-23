@@ -22,9 +22,9 @@ _SECRET = re.compile(
     r")"
 )
 _JWT = re.compile(r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b")
-_EMAIL = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
+_EMAIL = re.compile(r"(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 _IP = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
-_URL = re.compile(r"\b[a-z][a-z0-9+.-]*://[^\s]+", re.IGNORECASE)
+_URL = re.compile(r"(?<![A-Z0-9+.-])[a-z][a-z0-9+.-]*://[^\s]+", re.IGNORECASE)
 _PRIVATE_NETWORKS = tuple(
     ipaddress.ip_network(network) for network in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")
 )
