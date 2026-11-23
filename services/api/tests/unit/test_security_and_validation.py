@@ -1,3 +1,5 @@
+from time import perf_counter
+
 from app.core.security_text import detect_injection, redact
 from app.services.incidents.analysis import extract_observations, validate_analysis
 from app.services.rca.report import render_markdown
@@ -57,6 +59,27 @@ def test_redacts_quoted_json_credentials_and_preserves_quotes():
 
     assert clean == '"password": "[REDACTED]" \'api_key\': \'[REDACTED]\' "DB_PASS":"[REDACTED]"'
     assert summary["secret"] == 3
+
+
+def test_truncated_quoted_secret_does_not_consume_later_lines():
+    raw = '"password": "abc\nlater "quoted" text'
+
+    clean, summary = redact(raw)
+
+    assert clean == '"password": [REDACTED]\nlater "quoted" text'
+    assert summary["secret"] == 1
+
+
+def test_secret_redaction_is_fast_for_long_nonsecret_keys():
+    inputs = ("a_" * 5000 + "=x", "a-" * 20_000)
+    started = perf_counter()
+
+    for raw in inputs:
+        clean, summary = redact(raw)
+        assert clean == raw
+        assert summary["secret"] == 0
+
+    assert perf_counter() - started < 0.5
 
 
 def test_strips_url_credentials_before_masking_public_ip():

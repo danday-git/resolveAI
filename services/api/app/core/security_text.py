@@ -9,13 +9,15 @@ _PRIVATE_KEY = re.compile(
 _AUTH_BEARER = re.compile(r"(?i)(Authorization\s*:\s*Bearer\s+)\S+")
 _BEARER = re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/=-]+")
 _AWS_KEY = re.compile(r"\bAKIA[0-9A-Z]{16}\b")
+_SECRET_KEY = re.compile(
+    r"(?i)(?:^|[_-])(?:api[_-]?key|apikey|token|secret|password|passwd|pwd|pass)(?:$|[_-])"
+)
 _SECRET = re.compile(
     r"(?i)(?<![A-Z0-9_-])"
     r"(?P<key_quote>['\"]?)"
-    r"(?P<key>(?:[A-Z0-9]+[_-])*?(?:api[_-]?key|token|secret|password|passwd|pwd|pass)"
-    r"(?:[_-][A-Z0-9]+)*)(?P=key_quote)(?P<separator>\s*[:=]\s*)"
+    r"(?P<key>[A-Z0-9_-]{1,100})(?P=key_quote)(?P<separator>\s*[:=]\s*)"
     r"(?:"
-    r"(?P<value_quote>['\"])(?:\\.|(?!(?P=value_quote))[\s\S])*(?P=value_quote)"
+    r"(?P<value_quote>['\"])[^\\\n'\"]{0,500}(?:\\.[^\n'\"\\]{0,500})*(?P=value_quote)"
     r"|[^\s,;]+"
     r")"
 )
@@ -67,6 +69,8 @@ def redact(text: str) -> tuple[str, dict[str, int]]:
 
 
 def _count_secret(summary: dict[str, int], match: re.Match[str]) -> str:
+    if not _SECRET_KEY.search(match.group("key")):
+        return match.group(0)
     summary["secret"] += 1
     key_quote = match.group("key_quote")
     value_quote = match.group("value_quote") or ""
