@@ -24,6 +24,7 @@ Tokens are a Tailwind v4 `@theme` block, so every one is also a utility (`bg-pap
 | `accent`, `cool`, `ok`, `bad` (each with a `-soft` fill) | See the table above |
 | `radius-card` 10px, `radius-pill` 6px, `radius-chip` 4px | Panels and dialogs, controls, badges |
 | `--breakpoint-nav` 60rem | The `nav:` variant, where the sidebar gives way to a top bar with a menu |
+| `--breakpoint-lg` 79rem | The `lg:` variant for two-column pages: Tailwind's 64rem plus the 15rem sidebar |
 
 The light colourway overrides the colour tokens under `html[data-theme="paper"]` in the same file. `ThemeToggle` (`Nav.tsx`) sets that attribute and stores the choice in `localStorage`; an inline script in `layout.tsx` applies it before first paint. Components never branch on the theme.
 

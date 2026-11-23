@@ -15,7 +15,7 @@
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1); --ease-in: cubic-bezier(0.7, 0, 0.84, 0); --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --radius-card: 10px; --radius-pill: 6px; --radius-chip: 4px;
   --shadow-card: none;
-  --breakpoint-nav: 60rem;
+  --breakpoint-nav: 60rem; --breakpoint-lg: 79rem; /* lg: Tailwind's 64rem plus the 15rem sidebar, so two-column pages get the room they were laid out for */
   --tracking-display: -0.03em;
 }
 :root {
