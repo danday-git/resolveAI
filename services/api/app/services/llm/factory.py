@@ -10,6 +10,7 @@ from app.services.llm.openai import OpenAIChatProvider, OpenAIEmbeddingProvider
 KNOWN_EMBEDDING_DIMS = {
     ("openai", "text-embedding-ada-002"): 1536,
     ("ollama", "nomic-embed-text"): 768,
+    ("ollama", "nomic-embed-text-v2-moe"): 768,
     ("ollama", "mxbai-embed-large"): 1024,
 }
 

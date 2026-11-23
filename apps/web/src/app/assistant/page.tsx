@@ -171,7 +171,7 @@ export default function Assistant() {
               Ask
             </Button>
           </div>
-          <p className="mt-2 text-xs text-muted">Enter sends, Shift+Enter adds a new line. Instructions written inside documents are ignored.</p>
+          <p className="mt-2 text-xs text-muted">Ask in any language. Enter sends, Shift+Enter adds a new line. Instructions written inside documents are ignored.</p>
         </form>
       </div>
       <aside className="hidden lg:block">

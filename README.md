@@ -78,8 +78,8 @@ Chat and embeddings are configured independently. Changing the **embedding** mod
 |---|---|
 | OpenAI (default) | `LLM_PROVIDER=openai` `EMBEDDING_PROVIDER=openai` `OPENAI_API_KEY=sk-…` `EMBEDDING_MODEL=text-embedding-3-small` `EMBEDDING_DIM=1536` |
 | Anthropic chat + OpenAI embeddings | `LLM_PROVIDER=anthropic` `LLM_MODEL=claude-haiku-4-5` `ANTHROPIC_API_KEY=…` `EMBEDDING_PROVIDER=openai` `OPENAI_API_KEY=…` `EMBEDDING_DIM=1536` |
-| Anthropic chat + local embeddings | `LLM_PROVIDER=anthropic` `ANTHROPIC_API_KEY=…` `EMBEDDING_PROVIDER=ollama` `EMBEDDING_MODEL=nomic-embed-text` `EMBEDDING_DIM=768` |
-| Ollama (free, local) | `LLM_PROVIDER=ollama` `LLM_MODEL=llama3.2:3b` `EMBEDDING_PROVIDER=ollama` `EMBEDDING_MODEL=nomic-embed-text` `EMBEDDING_DIM=768` `OLLAMA_BASE_URL=http://ollama:11434` |
+| Anthropic chat + local embeddings | `LLM_PROVIDER=anthropic` `ANTHROPIC_API_KEY=…` `EMBEDDING_PROVIDER=ollama` `EMBEDDING_MODEL=nomic-embed-text-v2-moe` `EMBEDDING_DIM=768` |
+| Ollama (free, local) | `LLM_PROVIDER=ollama` `LLM_MODEL=llama3.2:3b` `EMBEDDING_PROVIDER=ollama` `EMBEDDING_MODEL=nomic-embed-text-v2-moe` `EMBEDDING_DIM=768` `OLLAMA_BASE_URL=http://ollama:11434` |
 | Mock (no network) | `LLM_PROVIDER=mock` `EMBEDDING_PROVIDER=mock` `EMBEDDING_DIM=256` |
 
 **Anthropic has no embeddings API.** If `LLM_PROVIDER=anthropic` and `EMBEDDING_PROVIDER` is unset, embeddings default to OpenAI (needs `OPENAI_API_KEY`); setting `EMBEDDING_PROVIDER=anthropic` is a startup error.
@@ -89,7 +89,7 @@ Ollama runs as an optional Compose profile:
 ```bash
 docker compose -f infra/docker-compose.yml --env-file .env --profile web --profile ollama up --build -d
 docker compose -f infra/docker-compose.yml exec ollama ollama pull llama3.2:3b
-docker compose -f infra/docker-compose.yml exec ollama ollama pull nomic-embed-text
+docker compose -f infra/docker-compose.yml exec ollama ollama pull nomic-embed-text-v2-moe
 ```
 
 Costs are estimates from the pricing table in `services/api/app/services/llm/pricing.py`; override with `LLM_PRICING_FILE=/path/prices.json` (`{"provider:model": {"input_per_1m": 0.15, "output_per_1m": 0.6}}`). Unknown models record a `null` cost instead of a guess. Every LLM call stores provider and exact model in `llm_requests`.

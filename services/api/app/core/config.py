@@ -105,7 +105,7 @@ class Settings(BaseSettings):
         defaults = {
             "openai": ("gpt-4o-mini", "text-embedding-3-small"),
             "anthropic": ("claude-haiku-4-5", "text-embedding-3-small"),
-            "ollama": ("qwen2.5:1.5b", "nomic-embed-text"),
+            "ollama": ("qwen2.5:1.5b", "nomic-embed-text-v2-moe"),
             "mock": ("mock-extractive-v1", "mock-hash-v1"),
         }
         if self.llm_model is None:

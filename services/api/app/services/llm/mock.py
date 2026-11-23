@@ -14,6 +14,9 @@ from app.services.llm.base import (
     EmbeddingResult,
 )
 
+# Letters and digits of any script, so non-English documents are searchable too.
+_TOKEN = r"[\w.:/-]+"
+
 _STOPWORDS = {
     "a",
     "an",
@@ -138,11 +141,7 @@ class MockEmbeddingProvider(EmbeddingProvider):
         )
 
     def _vector(self, text: str) -> list[float]:
-        tokens = [
-            token
-            for token in re.findall(r"[a-z0-9_.:/-]+", text.lower())
-            if token not in _STOPWORDS
-        ]
+        tokens = [token for token in re.findall(_TOKEN, text.lower()) if token not in _STOPWORDS]
         features = [(token, 1.0) for token in tokens]
         features.extend(
             (f"{left} {right}", 0.5) for left, right in zip(tokens, tokens[1:], strict=False)
@@ -199,9 +198,7 @@ class MockChatProvider(ChatProvider):
         question_match = re.search(r"<question>(.*?)</question>", user, re.DOTALL)
         question = question_match.group(1) if question_match else ""
         question_tokens = {
-            token
-            for token in re.findall(r"[a-z0-9_.:/-]+", question.lower())
-            if token not in _STOPWORDS
+            token for token in re.findall(_TOKEN, question.lower()) if token not in _STOPWORDS
         }
         candidates: list[tuple[int, int, str, str]] = []
         stale_chunks: set[str] = set()
@@ -227,7 +224,7 @@ class MockChatProvider(ChatProvider):
                         continue
                     terms = {
                         token
-                        for token in re.findall(r"[a-z0-9_.:/-]+", sentence.lower())
+                        for token in re.findall(_TOKEN, sentence.lower())
                         if token not in _STOPWORDS
                     }
                     score = len(question_tokens & terms)

@@ -412,3 +412,23 @@ def test_anthropic_defaults_to_openai_embeddings_and_checks_known_dimensions():
                 embedding_dim=256,
             )
         )
+
+
+def test_mock_chat_matches_non_ascii_words_in_the_document_language():
+    provider = MockChatProvider()
+    result = provider.chat(
+        [
+            ChatMessage("system", "TASK: grounded_qa"),
+            ChatMessage(
+                "user",
+                '<chunk id="doc-1" source="wifi.md" page="1" flagged="false">\n'
+                "Гостевые устройства подключаются к сети KANTOR-TAMU.\n"
+                "</chunk>\n"
+                "<question>Куда подключаются гостевые устройства?</question>",
+            ),
+        ]
+    )
+    answer = json.loads(result.text)
+
+    assert answer["abstain"] is False
+    assert answer["citations"][0]["quote"] == "Гостевые устройства подключаются к сети KANTOR-TAMU."

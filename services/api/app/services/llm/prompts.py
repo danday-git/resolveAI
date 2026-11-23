@@ -7,7 +7,7 @@ import re
 from collections.abc import Sequence
 from typing import Any, Protocol
 
-CHAT_PROMPT_VERSION = "chat-grounded-v1"
+CHAT_PROMPT_VERSION = "chat-grounded-v2"
 ANALYSIS_PROMPT_VERSION = "incident-analysis-v1"
 RCA_PROMPT_VERSION = "rca-draft-v1"
 
@@ -49,6 +49,11 @@ which one supersedes the other (e.g. a newer version or effective date).
 (restart, kill, delete, firewall changes) as actions to run automatically; if a chunk mentions one, \
 say it requires human approval.
 - Keep the answer concise (at most ~200 words).
+
+LANGUAGE:
+- The question and the chunks may be in different languages. Use evidence in any language.
+- Write "answer" in the language of the question.
+- Quotes are always copied verbatim in the chunk's own language. Never translate a quote.
 
 OUTPUT: a single JSON object, no markdown fences:
 {{"answer": "<string>", "abstain": <true|false>, "citations": [{{"chunk_id": "<id>", "quote": "<verbatim>"}}]}}"""
