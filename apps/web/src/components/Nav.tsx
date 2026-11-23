@@ -58,7 +58,7 @@ export function ThemeToggle({ className }: { className?: string }) {
 function NavLinks({ path, admin, onNavigate }: { path: string; admin: boolean; onNavigate?: () => void }) {
   return (
     <ul className="flex flex-col gap-0.5">
-      {(admin ? [...links, ["/admin", "Admin", "shield"] as const] : links).map(([href, label, icon]) => {
+      {(admin ? [...links, ["/admin", "Admin", "shield"] as const, ["/ai-provider", "AI provider", "sparkle"] as const] : links).map(([href, label, icon]) => {
         const active = href === "/" ? path === "/" : path.startsWith(href);
         return (
           <li key={href}>
