@@ -87,6 +87,33 @@ def test_mock_chat_keeps_selected_sentences_in_one_chunk():
     assert all(citation["chunk_id"] == "current" for citation in answer["citations"])
 
 
+def test_mock_chat_avoids_explicitly_superseded_chunks_when_current_evidence_matches():
+    result = MockChatProvider().chat(
+        [
+            ChatMessage("system", "TASK: grounded_qa"),
+            ChatMessage(
+                "user",
+                '<chunk id="old" source="policy-v1.md" page="1" flagged="false">\n'
+                "# Backup retention policy v1\n"
+                "Status: superseded by version 2.\n"
+                "Production database backups are retained for 14 days.\n"
+                "</chunk>\n"
+                '<chunk id="current" source="policy-v2.md" page="1" flagged="false">\n'
+                "# Backup retention policy v2\n"
+                "Production database backups are retained for 30 days.\n"
+                "</chunk>\n"
+                "<question>How many days are production database backups retained?</question>",
+            ),
+        ]
+    )
+
+    answer = json.loads(result.text)
+
+    assert "30 days" in answer["answer"]
+    assert "14 days" not in answer["answer"]
+    assert all(citation["chunk_id"] == "current" for citation in answer["citations"])
+
+
 def test_mock_analysis_groups_categories_and_caps_distinct_read_only_checks():
     provider = MockChatProvider()
     result = provider.chat(

@@ -204,9 +204,14 @@ class MockChatProvider(ChatProvider):
             if token not in _STOPWORDS
         }
         candidates: list[tuple[int, int, str, str]] = []
+        stale_chunks: set[str] = set()
         order = 0
         for match in re.finditer(r'<chunk id="([^"]+)"([^>]*)>(.*?)</chunk>', user, re.DOTALL):
             chunk_id, attrs, content = match.groups()
+            if re.search(
+                r"(?i)\bstatus\s*:\s*(?:superseded|archived|obsolete|deprecated)\b", content
+            ):
+                stale_chunks.add(chunk_id)
             flagged = 'flagged="true"' in attrs
             if flagged:
                 from app.core.security_text import detect_injection
@@ -229,6 +234,9 @@ class MockChatProvider(ChatProvider):
                     if score and len(sentence) >= 8:
                         candidates.append((score, order, chunk_id, sentence))
                     order += 1
+        current_candidates = [item for item in candidates if item[2] not in stale_chunks]
+        if any(score >= 2 for score, _, _, _ in current_candidates):
+            candidates = current_candidates
         ranked = sorted(candidates, key=lambda item: (-item[0], item[1]))
         selected = ranked[:1]
         if selected:
