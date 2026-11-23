@@ -19,7 +19,7 @@
 *, *::before, *::after { box-sizing: border-box; }
 html, body { overflow-x: clip; margin: 0; }
 body { background: var(--paper); color: var(--ink-2); font: 400 1.0625rem/1.6 var(--font-body); -webkit-font-smoothing: antialiased; }
-img { display: block; max-width: 100%; height: auto; }
+img, video { display: block; max-width: 100%; height: auto; }
 a { color: inherit; }
 a:focus-visible, .btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; transition: none; }
 
