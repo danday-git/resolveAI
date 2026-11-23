@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { api, post } from "@/lib/api";
 import { Icon, type IconName } from "./icons";
 import { btn, cx } from "./ui";
@@ -15,9 +15,9 @@ const links: [string, string, IconName][] = [
   ["/metrics", "Evaluation / Ops", "chart"],
 ];
 
-function Brand() {
+function Brand({ onClick }: { onClick?: () => void }) {
   return (
-    <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight text-zinc-950">
+    <Link href="/" onClick={onClick} className="flex items-center gap-2 font-semibold tracking-tight text-zinc-950">
       <span className="grid h-7 w-7 place-items-center rounded-md bg-indigo-600 text-white">
         <Icon name="shield" className="h-4 w-4" />
       </span>
@@ -57,6 +57,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [email, setEmail] = useState<string | null>(null);
   const [drawer, setDrawer] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const wasDrawerOpen = useRef(false);
   const isLogin = path === "/login";
 
   useEffect(() => {
@@ -71,6 +73,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setDrawer(false);
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  }, [drawer]);
+
+  useEffect(() => {
+    if (wasDrawerOpen.current && !drawer) menuButtonRef.current?.focus();
+    wasDrawerOpen.current = drawer;
   }, [drawer]);
 
   if (isLogin) return <>{children}</>;
@@ -92,10 +99,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-dvh lg:pl-60">
-      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-white focus:px-3 focus:py-2">
+      <a href="#main" inert={drawer} className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-white focus:px-3 focus:py-2">
         Skip to content
       </a>
-      <aside className="fixed inset-y-0 left-0 hidden w-60 flex-col gap-6 border-r border-zinc-200 bg-zinc-100/70 px-3 py-4 lg:flex">
+      <aside inert={drawer} className="fixed inset-y-0 left-0 hidden w-60 flex-col gap-6 border-r border-zinc-200 bg-zinc-100/70 px-3 py-4 lg:flex">
         <div className="px-2.5">
           <Brand />
         </div>
@@ -104,9 +111,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
         {footer}
       </aside>
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-zinc-200 bg-white/90 px-4 backdrop-blur lg:hidden">
+      <header inert={drawer} className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-zinc-200 bg-white/90 px-4 backdrop-blur lg:hidden">
         <Brand />
-        <button className={btn("ghost", "sm")} onClick={() => setDrawer(true)} aria-label="Open navigation" aria-expanded={drawer}>
+        <button ref={menuButtonRef} className={btn("ghost", "sm")} onClick={() => setDrawer(true)} aria-label="Open navigation" aria-expanded={drawer}>
           <Icon name="menu" className="h-5 w-5" />
         </button>
       </header>
@@ -115,8 +122,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="absolute inset-0 bg-zinc-950/40" onClick={() => setDrawer(false)} />
           <div className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col gap-6 bg-zinc-50 px-3 py-4 shadow-xl">
             <div className="flex items-center justify-between px-2.5">
-              <Brand />
-              <button className={btn("ghost", "sm")} onClick={() => setDrawer(false)} aria-label="Close navigation">
+              <Brand onClick={() => setDrawer(false)} />
+              <button autoFocus className={btn("ghost", "sm")} onClick={() => setDrawer(false)} aria-label="Close navigation">
                 <Icon name="x" />
               </button>
             </div>
@@ -127,7 +134,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
       )}
-      <main id="main" className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      <main id="main" inert={drawer} className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         {children}
       </main>
     </div>
