@@ -11,6 +11,7 @@ from app.models import (
     Conversation,
     Incident,
     LLMRequest,
+    Message,
     RCAReport,
     RequestLog,
 )
@@ -39,7 +40,7 @@ def purge_expired() -> dict[str, int]:
             Conversation,
             Conversation.created_at,
             settings.retention_conversation_days,
-            [],
+            [(Message.conversation_id == Conversation.id, Message.created_at)],
         ),
         ("llm_requests", LLMRequest, LLMRequest.created_at, settings.retention_log_days, []),
         ("request_logs", RequestLog, RequestLog.created_at, settings.retention_log_days, []),

@@ -6,7 +6,15 @@ from sqlalchemy import select, update
 from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.core.retention import purge_expired
-from app.models import Analysis, AuditEvent, Incident, RequestLog, User
+from app.models import (
+    Analysis,
+    AuditEvent,
+    Conversation,
+    Incident,
+    Message,
+    RequestLog,
+    User,
+)
 from app.services.ingestion.pipeline import ingest_document
 
 INCIDENT = {"title": "Checkout 502", "service": "checkout", "severity": "SEV3", "symptoms": "502"}
@@ -172,3 +180,24 @@ def test_retention_deletes_only_what_is_older_than_the_setting(client, auth_head
         purge = db.scalar(select(AuditEvent).where(AuditEvent.action == "retention.purged"))
         assert purge.actor_id is None and purge.detail == {"incidents": 1}
         assert db.scalar(select(User.id).limit(1)) is not None
+
+
+def test_retention_keeps_a_conversation_that_is_still_in_use(client, auth_headers, monkeypatch):
+    def ask(conversation_id=None):
+        body = {"question": "What is in the runbook?", "conversation_id": conversation_id}
+        return client.post("/api/v1/chat", headers=auth_headers, json=body).json()
+
+    continued, abandoned = ask()["conversation_id"], ask()["conversation_id"]
+    old = datetime.now(UTC) - timedelta(days=40)
+    with SessionLocal() as db:
+        db.execute(update(Conversation).values(created_at=old))
+        db.execute(update(Message).values(created_at=old))
+        db.commit()
+    ask(continued)
+
+    monkeypatch.setattr(get_settings(), "retention_conversation_days", 30)
+    assert purge_expired() == {"conversations": 1}
+    path = "/api/v1/conversations/{}/messages"
+    kept = client.get(path.format(continued), headers=auth_headers).json()["items"]
+    assert len(kept) == 4
+    assert client.get(path.format(abandoned), headers=auth_headers).status_code == 404
