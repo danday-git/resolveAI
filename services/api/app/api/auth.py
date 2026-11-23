@@ -7,7 +7,7 @@ import smtplib
 from datetime import UTC, datetime, timedelta
 from email.message import EmailMessage
 from typing import Annotated
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 import httpx
 import jwt
@@ -276,8 +276,8 @@ def _oidc_get(url: str) -> dict:
     return httpx.get(url, timeout=10).raise_for_status().json()
 
 
-def _oidc_post(url: str, data: dict) -> dict:
-    return httpx.post(url, data=data, timeout=10).raise_for_status().json()
+def _oidc_post(url: str, data: dict, auth: tuple[str, str] | None = None) -> dict:
+    return httpx.post(url, data=data, auth=auth, timeout=10).raise_for_status().json()
 
 
 def _oidc_discovery() -> dict:
@@ -380,17 +380,20 @@ def oidc_callback(
         if not hmac.compare_digest(str(saved["state"]), state):
             return failed
         discovery = _oidc_discovery()
-        tokens = _oidc_post(
-            discovery["token_endpoint"],
-            {
-                "grant_type": "authorization_code",
-                "code": code,
-                "redirect_uri": _oidc_redirect_uri(),
-                "client_id": settings.oidc_client_id,
-                "client_secret": secret.get_secret_value(),
-                "code_verifier": saved["verifier"],
-            },
-        )
+        form = {
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": _oidc_redirect_uri(),
+            "code_verifier": saved["verifier"],
+        }
+        credentials = (settings.oidc_client_id or "", secret.get_secret_value())
+        # A provider that does not list client_secret_post only takes HTTP Basic, the OIDC default.
+        if "client_secret_post" in discovery.get("token_endpoint_auth_methods_supported", []):
+            form |= dict(zip(("client_id", "client_secret"), credentials, strict=True))
+            tokens = _oidc_post(discovery["token_endpoint"], form)
+        else:
+            basic = (quote(credentials[0], safe=""), quote(credentials[1], safe=""))
+            tokens = _oidc_post(discovery["token_endpoint"], form, basic)
         id_token = tokens["id_token"]
         keys = jwt.PyJWKSet.from_dict(_oidc_get(discovery["jwks_uri"]))
         kid = jwt.get_unverified_header(id_token).get("kid")

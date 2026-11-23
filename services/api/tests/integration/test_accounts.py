@@ -200,7 +200,7 @@ def idp(monkeypatch):
     monkeypatch.setattr(settings, "oidc_issuer", issuer)
     monkeypatch.setattr(settings, "oidc_client_id", "resolveai")
     monkeypatch.setattr(settings, "oidc_client_secret", settings.jwt_secret)
-    state = {"claims": {}, "key": key}
+    state = {"claims": {}, "key": key, "discovery": {}}
 
     def get(url):
         if url.endswith("/.well-known/openid-configuration"):
@@ -209,10 +209,11 @@ def idp(monkeypatch):
                 "authorization_endpoint": f"{issuer}/authorize",
                 "token_endpoint": f"{issuer}/token",
                 "jwks_uri": f"{issuer}/jwks",
-            }
+            } | state["discovery"]
         return {"keys": [jwk]}
 
-    def post(url, data):
+    def post(url, data, auth=None):
+        state["token_request"] = (data, auth)
         now = datetime.now(UTC)
         claims = {
             "iss": issuer,
@@ -241,6 +242,17 @@ def sso(client, idp, **claims):
         params={"code": "c", "state": claims.pop("state", query["state"][0])},
         follow_redirects=False,
     )
+
+
+def test_sso_sends_the_client_secret_the_way_the_provider_accepts(client, idp):
+    secret = get_settings().jwt_secret.get_secret_value()
+    sso(client, idp, email="a@example.com")  # nothing advertised: HTTP Basic, the OIDC default
+    form, basic = idp["token_request"]
+    assert basic == ("resolveai", secret) and not {"client_id", "client_secret"} & set(form)
+    idp["discovery"] = {"token_endpoint_auth_methods_supported": ["client_secret_post"]}
+    sso(client, idp, email="a@example.com")
+    form, basic = idp["token_request"]
+    assert basic is None and (form["client_id"], form["client_secret"]) == ("resolveai", secret)
 
 
 def test_sso_only_admits_allowed_email_domains(client, idp, monkeypatch):
