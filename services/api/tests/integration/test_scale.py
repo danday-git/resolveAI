@@ -52,8 +52,9 @@ def test_rate_limited_request_reports_when_to_retry(clean_database):
 
 def test_login_is_rate_limited_per_email(client):
     body = {"email": "demo@resolveai.local", "password": "wrong-password"}
-    codes = [client.post("/api/v1/auth/login", json=body).status_code for _ in range(11)]
-    assert codes == [401] * 10 + [429]
+    # 21 tries: the count restarts if the minute turns over partway through.
+    codes = [client.post("/api/v1/auth/login", json=body).status_code for _ in range(21)]
+    assert codes[:10] == [401] * 10 and 429 in codes
 
 
 def incident(client, headers, title, service="checkout-web", severity="SEV3"):
