@@ -402,7 +402,9 @@ def generate_rca(
         user.id,
         parse_rca,
     )
-    report = db.scalar(select(RCAReport).where(RCAReport.incident_id == incident.id))
+    report = db.scalar(
+        select(RCAReport).where(RCAReport.incident_id == incident.id).with_for_update()
+    )
     if report is None:
         report = RCAReport(incident_id=incident.id, audit_json=[])
         db.add(report)
@@ -439,7 +441,9 @@ def patch_rca(
     user: User = Depends(get_current_user),
 ):
     incident = get_owned(db, Incident, incident_id, user)
-    report = db.scalar(select(RCAReport).where(RCAReport.incident_id == incident.id))
+    report = db.scalar(
+        select(RCAReport).where(RCAReport.incident_id == incident.id).with_for_update()
+    )
     if report is None:
         raise ApiError(404, "NOT_FOUND", "RCA report not found")
     reset = report.cause_status == CauseStatus.CONFIRMED
@@ -465,7 +469,9 @@ def confirm_rca(
     user: User = Depends(get_current_user),
 ):
     incident = get_owned(db, Incident, incident_id, user)
-    report = db.scalar(select(RCAReport).where(RCAReport.incident_id == incident.id))
+    report = db.scalar(
+        select(RCAReport).where(RCAReport.incident_id == incident.id).with_for_update()
+    )
     if report is None:
         raise ApiError(404, "NOT_FOUND", "RCA report not found")
     if body.expected_updated_at != report.updated_at:
