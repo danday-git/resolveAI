@@ -4,15 +4,15 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { api, post, providerNames, type Me } from "@/lib/api";
-import { Icon } from "./icons";
+import { Icon, type IconName } from "./icons";
 import { Alert, btn, cx, link } from "./ui";
 
-const links: [string, string][] = [
-  ["/", "Overview"],
-  ["/knowledge", "Knowledge Base"],
-  ["/assistant", "Assistant"],
-  ["/incidents", "Incidents"],
-  ["/metrics", "Evaluation / Ops"],
+const links: [string, string, IconName][] = [
+  ["/", "Overview", "home"],
+  ["/knowledge", "Knowledge Base", "book"],
+  ["/assistant", "Assistant", "chat"],
+  ["/incidents", "Incidents", "alert"],
+  ["/metrics", "Evaluation / Ops", "chart"],
 ];
 
 function Brand({ onClick }: { onClick?: () => void }) {
@@ -57,7 +57,7 @@ export function ThemeToggle({ className }: { className?: string }) {
 function NavLinks({ path, admin, onNavigate }: { path: string; admin: boolean; onNavigate?: () => void }) {
   return (
     <ul className="flex flex-col gap-0.5">
-      {(admin ? [...links, ["/admin", "Admin"]] : links).map(([href, label]) => {
+      {(admin ? [...links, ["/admin", "Admin", "shield"] as const] : links).map(([href, label, icon]) => {
         const active = href === "/" ? path === "/" : path.startsWith(href);
         return (
           <li key={href}>
@@ -66,10 +66,11 @@ function NavLinks({ path, admin, onNavigate }: { path: string; admin: boolean; o
               onClick={onNavigate}
               aria-current={active ? "page" : undefined}
               className={cx(
-                "flex h-11 items-center whitespace-nowrap rounded-pill px-3 text-sm no-underline transition-colors duration-[var(--dur-micro)] active:bg-rule nav:h-9",
+                "flex h-11 items-center gap-2.5 whitespace-nowrap rounded-pill px-3 text-sm no-underline transition-colors duration-[var(--dur-micro)] active:bg-rule nav:h-9",
                 active ? "bg-rule/60 text-ink" : "text-muted hover:text-ink",
               )}
             >
+              <Icon name={icon} />
               {label}
             </Link>
           </li>
