@@ -70,6 +70,19 @@ def test_redacts_nested_secrets_inside_nonsecret_values():
     assert summary["secret"] == 2
 
 
+def test_redacts_quoted_values_containing_the_opposite_quote():
+    cases = (
+        ('"password": "it\'s-a-secret"', '"password": "[REDACTED]"'),
+        ("'pwd': 'say \"hi\" now'", "'pwd': '[REDACTED]'"),
+    )
+
+    for raw, expected in cases:
+        clean, summary = redact(raw)
+
+        assert clean == expected
+        assert summary["secret"] == 1
+
+
 def test_truncated_quoted_secret_does_not_consume_later_lines():
     raw = '"password": "abc\nlater "quoted" text'
 

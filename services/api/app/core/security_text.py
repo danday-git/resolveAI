@@ -17,8 +17,9 @@ _SECRET = re.compile(
     r"(?P<key_quote>['\"]?)"
     r"(?P<key>[A-Z0-9_-]{1,100})(?P=key_quote)(?P<separator>\s*[:=]\s*)"
     r"(?:"
-    r"(?P<value_quote>['\"])[^\\\n'\"]{0,500}(?:\\.[^\n'\"\\]{0,500})*(?P=value_quote)"
-    r"|[^\s,;]+"
+    r'"(?P<double_value>[^"\n\\]{0,500}(?:\\.[^"\n\\]{0,500})*)"'
+    r"|'(?P<single_value>[^'\n\\]{0,500}(?:\\.[^'\n\\]{0,500})*)'"
+    r"|(?P<unquoted_value>[^\s,;]+)"
     r")"
 )
 _JWT = re.compile(r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b")
@@ -74,14 +75,18 @@ def _count_secret(
     key_quote = match.group("key_quote")
     key = match.group("key")
     separator = match.group("separator")
-    value_quote = match.group("value_quote") or ""
+    double_value = match.group("double_value")
+    single_value = match.group("single_value")
+    if double_value is not None:
+        value_quote, value = '"', double_value
+    elif single_value is not None:
+        value_quote, value = "'", single_value
+    else:
+        value_quote, value = "", match.group("unquoted_value")
     prefix = f"{key_quote}{key}{key_quote}{separator}"
     if not _SECRET_KEY.search(key):
         if not allow_nested:
             return match.group(0)
-        value = match.group(0)[len(prefix) :]
-        if value_quote:
-            value = value[1:-1]
         value = _SECRET.sub(
             lambda nested: _count_secret(summary, nested, allow_nested=False),
             value,
