@@ -106,7 +106,7 @@ function KnowledgeBase() {
         variant="secondary"
         size="sm"
         disabled={d.status !== "ready"}
-        title={d.status === "ready" ? undefined : "Available once indexing finishes"}
+        title={d.status === "ready" ? undefined : "Available once the document is ready"}
         onClick={() => open(d)}
         aria-label={`Preview ${d.filename}`}
         aria-expanded={preview?.doc.id === d.id}
@@ -161,7 +161,7 @@ function KnowledgeBase() {
     <div className="space-y-6">
       <PageHeader
         title="Knowledge Base"
-        description="Runbooks and SOPs the assistant may cite. Documents are only visible to you."
+        description="The runbooks and SOPs the assistant is allowed to quote. It answers only from what is here. Documents are visible to you only."
         actions={
           <Button icon="upload" loading={!!uploading} onClick={() => fileRef.current?.click()}>
             Upload document
@@ -199,7 +199,7 @@ function KnowledgeBase() {
             {uploading ? `Uploading ${uploading}…` : "Drop a file here to add it to the knowledge base."}
           </p>
           <p className="mt-1 max-w-[75ch] text-muted">
-            Text-based PDF, TXT or MD up to {MAX_MB}&nbsp;MB. Scanned PDFs (OCR) are not supported. Use synthetic or permitted documents only.
+            Text-based PDF, TXT or MD up to {MAX_MB}&nbsp;MB. After upload, ResolveAI splits each document into short passages it can search (Queued, then Processing). Ready means the assistant can cite it; Failed shows the reason. Scanned PDFs are read with OCR only if your server enables it. Upload only documents you are allowed to share.
           </p>
         </div>
         <Button variant="secondary" size="sm" icon="file" disabled={!!uploading} onClick={() => fileRef.current?.click()}>
@@ -233,7 +233,7 @@ function KnowledgeBase() {
       ) : docs.length === 0 ? (
         <EmptyState
           title="No documents yet"
-          description="The assistant can only answer from what is uploaded here. Add an SOP or runbook to get started."
+          description="The assistant can only answer from what is uploaded here. Add a runbook or SOP; once it shows Ready, ask about it on the Assistant page."
           action={
             <Button variant="secondary" size="sm" icon="upload" onClick={() => fileRef.current?.click()}>
               Upload document

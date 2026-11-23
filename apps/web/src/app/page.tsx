@@ -7,17 +7,17 @@ import { Badge, Card, EmptyState, ErrorBox, LoadingRows, PageHeader, Section, St
 import { api, errorText, type DocumentMeta, type DocumentPage, type Incident, type Page } from "@/lib/api";
 import type { MetricsSummary } from "./metrics/page";
 
-const steps: [string, string, string][] = [
-  ["/knowledge", "Upload a runbook or SOP", "PDF, TXT or Markdown, indexed into searchable chunks."],
-  ["/assistant", "Ask a grounded question", "Answers cite exact excerpts or abstain."],
-  ["/incidents", "Analyze an incident", "Paste logs, review suspected causes and read-only checks."],
-  ["/incidents", "Draft and confirm the RCA", "A human reviewer confirms the root cause, then export."],
+const principles: [string, string][] = [
+  ["Evidence first", "Answers come only from the runbooks and SOPs you upload. Each claim links to the exact passage, and a question without one is declined instead of guessed."],
+  ["Possible causes are not facts", "An analysis keeps what the log shows apart from what might explain it, with read-only checks for you to run. ResolveAI never runs a command."],
+  ["A person confirms", "An RCA stays a draft, marked UNCONFIRMED, until a reviewer records the confirmed cause and signs off."],
 ];
 
 export default function Overview() {
   const [incidents, setIncidents] = useState<Page<Incident> | null>(null);
   const [docs, setDocs] = useState<DocumentPage | null>(null);
   const [metrics, setMetrics] = useState<MetricsSummary | null>(null);
+  const [conversations, setConversations] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -32,6 +32,9 @@ export default function Overview() {
         setMetrics(m);
       })
       .catch((e) => setError(errorText(e)));
+    api<Page<unknown>>("/conversations?limit=1")
+      .then((c) => setConversations(c.total))
+      .catch(() => setConversations(0));
   }, []);
 
   const count = (...s: DocumentMeta["status"][]) => s.reduce((n, k) => n + (docs?.status_counts[k] ?? 0), 0);
@@ -41,12 +44,23 @@ export default function Overview() {
     ["Processing", count("queued", "processing"), "bg-cool"],
     ["Failed", count("failed"), "bg-bad"],
   ] as const;
+  // shortcut: "analyzed" looks at the five newest incidents only; a status count from the API would cover all.
+  const steps: [string, string, string, boolean | null][] = [
+    ["/knowledge", "Upload a runbook or SOP", "PDF, TXT or Markdown. These are the only sources the assistant may cite.", !!docs?.total],
+    ["/knowledge", "Wait until it is ready", "ResolveAI splits each document into passages it can search. Ready means it can be cited.", count("ready") > 0],
+    ["/assistant", "Ask a question", "Open a numbered source under the answer to read the exact text. Ticked once you have asked, even if the question was declined.", !!conversations],
+    ["/incidents?new=1", "Record an incident", "Symptoms and a log excerpt. Secrets, tokens, emails and public IPs are removed first.", !!incidents?.total],
+    ["/incidents", "Run an analysis", "Observations from the log, possible causes, and read-only checks to run yourself.", !!incidents?.items.some((i) => i.status !== "open")],
+    ["/incidents", "Review the RCA draft and confirm it yourself", "Open an analyzed incident, then its RCA tab. Not tracked here.", null],
+  ];
+  const loaded = docs !== null && incidents !== null && conversations !== null;
+  const remaining = steps.filter(([, , , done]) => done === false).length;
 
   return (
     <div className="space-y-12">
       <PageHeader
         title="Overview"
-        description="Knowledge base health, recent incidents and the last 7 days of usage."
+        description="ResolveAI helps support, NOC and infrastructure engineers investigate incidents with their own runbooks: answers show their sources, possible causes stay separate from facts, and a person confirms the root cause."
         actions={
           <>
             <Link href="/assistant" className={btn("secondary")}>
@@ -61,6 +75,7 @@ export default function Overview() {
         }
       />
       <ErrorBox message={error} />
+      {loaded && remaining > 0 && <GettingStarted steps={steps} remaining={remaining} />}
       <div className="grid gap-x-[var(--gap-columns)] gap-y-12 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <Section
           title="Recent incidents"
@@ -128,7 +143,7 @@ export default function Overview() {
             <StatCard
               label="Est. LLM cost (7 days)"
               value={metrics === null ? "–" : cost === null || cost === undefined ? "Unknown" : `$${cost.toFixed(4)}`}
-              hint={metrics ? `${metrics.llm.calls} model calls` : undefined}
+              hint={metrics ? (cost === null ? "No price set for this provider" : `${metrics.llm.calls} model calls`) : undefined}
             />
           </div>
           <Card
@@ -164,20 +179,46 @@ export default function Overview() {
           </Card>
         </div>
       </div>
-      <Section title="Demo workflow" description="The end-to-end path from knowledge to a confirmed RCA.">
-        <ol className="panels sm:grid-cols-2 lg:grid-cols-4">
-          {steps.map(([href, t, d], i) => (
-            <li key={t}>
-              <Link href={href} className="block h-full px-5 py-4 no-underline transition-colors duration-[var(--dur-micro)] hover:bg-rule/40 active:bg-rule">
-                <span className="measured text-muted">{i + 1}</span>
-                <span className="mt-2 block text-ink">{t}</span>
-                <span className="mt-1 block text-sm text-muted">{d}</span>
-              </Link>
-            </li>
-          ))}
-        </ol>
-      </Section>
+      {loaded && remaining === 0 && <GettingStarted steps={steps} remaining={0} />}
     </div>
   );
 }
 
+
+function GettingStarted({ steps, remaining }: { steps: [string, string, string, boolean | null][]; remaining: number }) {
+  return (
+    <Section
+      title={remaining ? "Getting started" : "How ResolveAI works"}
+      description={remaining ? `${remaining} of ${steps.length - 1} steps left. Each step is ticked from your own data.` : "All tracked steps are done. Unlike a general chatbot, ResolveAI:"}
+    >
+      {remaining > 0 && (
+        <ol className="border-t border-rule">
+          {steps.map(([href, t, d, done], i) => (
+            <li key={t} className="border-b border-rule">
+              <Link href={href} className="grid grid-cols-[1.5rem_minmax(0,1fr)_auto] items-start gap-x-3 py-3 no-underline transition-colors duration-[var(--dur-micro)] hover:bg-rule/40 active:bg-rule">
+                {done ? <Icon name="check" className="mt-0.5 h-4 w-4 text-ok" /> : <span className="measured mt-px text-sm text-muted">{i + 1}</span>}
+                <span className="min-w-0">
+                  <span className={done ? "block text-muted line-through decoration-rule-2" : "block text-ink"}>{t}</span>
+                  <span className="mt-0.5 block text-sm text-muted">{d}</span>
+                </span>
+                <span className="flex items-center gap-1 text-sm text-muted">
+                  {done ? "Done" : done === null ? "Manual" : "To do"}
+                  <Icon name="chevronRight" className="h-3.5 w-3.5" />
+                </span>
+                <span className="visually-hidden">{done ? "(done)" : done === null ? "(not tracked)" : "(to do)"}</span>
+              </Link>
+            </li>
+          ))}
+        </ol>
+      )}
+      <dl className="panels mt-6 sm:grid-cols-3">
+        {principles.map(([t, d]) => (
+          <div key={t} className="px-5 py-4">
+            <dt className="text-ink">{t}</dt>
+            <dd className="mt-1 text-sm text-muted">{d}</dd>
+          </div>
+        ))}
+      </dl>
+    </Section>
+  );
+}
