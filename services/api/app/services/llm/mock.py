@@ -16,7 +16,8 @@ from app.services.llm.base import (
 
 # Latin runs and runs of other scripts are separate tokens, so "VPNクライアント" still yields "vpn".
 # shortcut: CJK is not word-segmented (a kana/kanji run is one token); use a real embedder for CJK.
-_TOKEN = r"[a-z0-9_.:/\u00c0-\u024f-]+|[^\W\d_a-z\u00c0-\u024f]+"
+_LATIN = "a-z0-9_\u00c0-\u024f\u1e00-\u1eff"
+_TOKEN = rf"[{_LATIN}.:/-]+|[^\W{_LATIN}]+[.:/-]*"
 
 _STOPWORDS = {
     "a",
