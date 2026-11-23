@@ -201,6 +201,7 @@ export default function Metrics() {
                   <td className={cx(td, "measured break-all")}>
                     <span className="mr-2 text-muted">{t.method}</span>
                     {t.route}
+                    <p className="mt-0.5 text-xs text-cool lg:hidden">{t.request_id}</p>
                   </td>
                   <td className={td}>
                     <Badge value={String(t.status_code)} tone={(t.status_code ?? 0) >= 500 ? "bad" : (t.status_code ?? 0) >= 400 ? "neutral" : "ok"} />

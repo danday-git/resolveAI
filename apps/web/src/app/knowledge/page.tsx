@@ -237,7 +237,10 @@ function KnowledgeBase() {
             <tbody>
               {visible.map((d) => (
                 <FragmentRow key={d.id} open={preview?.doc.id === d.id} detail={chunks(d)}>
-                  <td className={cx(td, "break-all text-ink")}>{d.filename}</td>
+                  <td className={cx(td, "break-all text-ink")}>
+                    {d.filename}
+                    <p className="measured mt-0.5 text-xs text-muted lg:hidden">{new Date(d.created_at).toLocaleString()}</p>
+                  </td>
                   <td className={td}>
                     <Badge value={d.status} />
                     {d.error_code && (
