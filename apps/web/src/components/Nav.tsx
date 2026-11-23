@@ -76,6 +76,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [drawer]);
 
   useEffect(() => {
+    if (!drawer) return;
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const onChange = () => {
+      if (mq.matches) setDrawer(false);
+    };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, [drawer]);
+
+  useEffect(() => {
     if (wasDrawerOpen.current && !drawer) menuButtonRef.current?.focus();
     wasDrawerOpen.current = drawer;
   }, [drawer]);
