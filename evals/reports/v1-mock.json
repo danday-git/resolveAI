@@ -1,0 +1,1356 @@
+{
+  "generated_at": "2026-11-23T08:36:53+00:00",
+  "git_sha": "9f65f6b",
+  "dataset": {
+    "name": "v1.jsonl",
+    "items": 30,
+    "by_scenario": {
+      "conflicting": 4,
+      "kb_question": 10,
+      "prompt_injection": 3,
+      "troubleshooting": 8,
+      "unanswerable": 5
+    }
+  },
+  "config": {
+    "chat_provider": "mock",
+    "chat_model": "mock-extractive-v1",
+    "embedding_provider": "mock",
+    "embedding_model": "mock-hash-v1",
+    "embedding_dim": 256,
+    "top_k": 5
+  },
+  "environment": "Linux x86_64, Python 3.12.16, in-process TestClient",
+  "metrics": {
+    "rag": {
+      "items": 30,
+      "failures": 0,
+      "failure_rate": 0.0,
+      "recall_at_5": 0.8,
+      "citation_validity_shipped": 1.0,
+      "citation_validity_model": 1.0,
+      "abstention_accuracy": 1.0,
+      "false_abstention_rate": 0.24,
+      "unsupported_claim_rate": 0.0667,
+      "must_include_coverage": 0.6316,
+      "answered_with_expected_citation": 0.8421,
+      "latency_p50_ms": 15.4,
+      "latency_p95_ms": 22.2,
+      "input_tokens": 17238,
+      "output_tokens": 1623,
+      "estimated_cost_usd": 0.0,
+      "by_scenario": {
+        "conflicting": {
+          "items": 4,
+          "abstained": 1,
+          "must_not_claim_violations": 2
+        },
+        "kb_question": {
+          "items": 10,
+          "abstained": 1,
+          "must_not_claim_violations": 0
+        },
+        "prompt_injection": {
+          "items": 3,
+          "abstained": 2,
+          "must_not_claim_violations": 0
+        },
+        "troubleshooting": {
+          "items": 8,
+          "abstained": 2,
+          "must_not_claim_violations": 0
+        },
+        "unanswerable": {
+          "items": 5,
+          "abstained": 5,
+          "must_not_claim_violations": 0
+        }
+      }
+    },
+    "baseline": {
+      "items": 30,
+      "failures": 0,
+      "failure_rate": 0.0,
+      "recall_at_5": null,
+      "citation_validity_shipped": null,
+      "citation_validity_model": null,
+      "abstention_accuracy": 1.0,
+      "false_abstention_rate": 1.0,
+      "unsupported_claim_rate": 0.0,
+      "must_include_coverage": null,
+      "answered_with_expected_citation": null,
+      "latency_p50_ms": 0.1,
+      "latency_p95_ms": 0.1,
+      "input_tokens": 16709,
+      "output_tokens": 630,
+      "estimated_cost_usd": null,
+      "by_scenario": {
+        "conflicting": {
+          "items": 4,
+          "abstained": 4,
+          "must_not_claim_violations": 0
+        },
+        "kb_question": {
+          "items": 10,
+          "abstained": 10,
+          "must_not_claim_violations": 0
+        },
+        "prompt_injection": {
+          "items": 3,
+          "abstained": 3,
+          "must_not_claim_violations": 0
+        },
+        "troubleshooting": {
+          "items": 8,
+          "abstained": 8,
+          "must_not_claim_violations": 0
+        },
+        "unanswerable": {
+          "items": 5,
+          "abstained": 5,
+          "must_not_claim_violations": 0
+        }
+      }
+    }
+  },
+  "results": {
+    "rag": [
+      {
+        "id": "kb-01",
+        "scenario_type": "kb_question",
+        "latency_ms": 22.8,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "The error log line connect() failed (111: Connection refused) while connecting to upstream means nothing is listening on the upstream address and port.",
+        "retrieved": [
+          "nginx-502-runbook#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "nginx-502-runbook#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": true,
+        "input_tokens": 878,
+        "output_tokens": 103,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      },
+      {
+        "id": "kb-02",
+        "scenario_type": "kb_question",
+        "latency_ms": 16.3,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "Check whether a process is listening on the upstream port with ss -ltnp | grep 3000.",
+        "retrieved": [
+          "nginx-502-runbook#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "nginx-502-runbook#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": true,
+        "input_tokens": 874,
+        "output_tokens": 81,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      },
+      {
+        "id": "kb-03",
+        "scenario_type": "kb_question",
+        "latency_ms": 21.4,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "The monitoring warning threshold is 80 percent disk usage and the critical threshold is 90 percent disk usage.",
+        "retrieved": [
+          "disk-space-sop#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "disk-space-sop#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": true,
+        "input_tokens": 767,
+        "output_tokens": 83,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      },
+      {
+        "id": "kb-04",
+        "scenario_type": "kb_question",
+        "latency_ms": 16.2,
+        "status_code": 200,
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "14 days"
+        ],
+        "abstention_correct": false,
+        "answer": "I don't have enough evidence in your knowledge base to answer this reliably. Upload a relevant SOP or runbook, or rephrase the question.",
+        "retrieved": [],
+        "recall_at_k": 0.0,
+        "citations": [],
+        "shipped_citations": 0,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": false,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      },
+      {
+        "id": "kb-05",
+        "scenario_type": "kb_question",
+        "latency_ms": 17.9,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "Error 809 usually means a local firewall or hotel network blocks the VPN ports.",
+        "retrieved": [
+          "vpn-access-sop#0",
+          "nginx-502-runbook#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "vpn-access-sop#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": true,
+        "input_tokens": 1068,
+        "output_tokens": 75,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      },
+      {
+        "id": "kb-06",
+        "scenario_type": "kb_question",
+        "latency_ms": 19.9,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "Confirm the VPN client version is 5.2 or newer; older clients are blocked since the March security update.",
+        "retrieved": [
+          "vpn-access-sop#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "vpn-access-sop#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": true,
+        "input_tokens": 746,
+        "output_tokens": 89,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      },
+      {
+        "id": "kb-07",
+        "scenario_type": "kb_question",
+        "latency_ms": 21.5,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "SERVFAIL from only one resolver points to that resolver, not to the record.",
+        "retrieved": [
+          "dns-resolution-sop#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "dns-resolution-sop#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": true,
+        "input_tokens": 792,
+        "output_tokens": 75,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      },
+      {
+        "id": "kb-08",
+        "scenario_type": "kb_question",
+        "latency_ms": 16.3,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "The error no live upstreams means every server in the upstream block is marked as failed.",
+        "retrieved": [
+          "nginx-502-runbook#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "nginx-502-runbook#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": true,
+        "input_tokens": 871,
+        "output_tokens": 79,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      },
+      {
+        "id": "kb-09",
+        "scenario_type": "kb_question",
+        "latency_ms": 17.9,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "Look for deleted files still held open by a process with lsof +L1.",
+        "retrieved": [
+          "disk-space-sop#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "disk-space-sop#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": true,
+        "input_tokens": 776,
+        "output_tokens": 75,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      },
+      {
+        "id": "kb-10",
+        "scenario_type": "kb_question",
+        "latency_ms": 11.3,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "5 percent"
+        ],
+        "abstention_correct": true,
+        "answer": "Monitoring shows packet loss above 2 percent on the inter-DC link, replication lag grows, and users report slow file transfers.",
+        "retrieved": [
+          "packet-loss-noc-sop#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "packet-loss-noc-sop#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": true,
+        "input_tokens": 785,
+        "output_tokens": 95,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      },
+      {
+        "id": "ts-01",
+        "scenario_type": "troubleshooting",
+        "latency_ms": 13.8,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "ss -ltnp",
+          "systemctl status app-backend"
+        ],
+        "abstention_correct": true,
+        "answer": "The error log line connect() failed (111: Connection refused) while connecting to upstream means nothing is listening on the upstream address and port.",
+        "retrieved": [
+          "nginx-502-runbook#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "nginx-502-runbook#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": true,
+        "input_tokens": 905,
+        "output_tokens": 103,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      },
+      {
+        "id": "ts-02",
+        "scenario_type": "troubleshooting",
+        "latency_ms": 20.6,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "pg_stat_activity",
+          "idle in transaction"
+        ],
+        "abstention_correct": true,
+        "answer": "Application logs show timeout acquiring connection from pool or remaining connection slots are reserved.",
+        "retrieved": [
+          "db-connection-pool-sop#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "db-connection-pool-sop#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": true,
+        "input_tokens": 775,
+        "output_tokens": 75,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      },
+      {
+        "id": "ts-03",
+        "scenario_type": "troubleshooting",
+        "latency_ms": 10.3,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "df -i"
+        ],
+        "abstention_correct": true,
+        "answer": "Services fail with No space left on device, databases stop accepting writes, and log rotation fails.",
+        "retrieved": [
+          "disk-space-sop#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "disk-space-sop#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": true,
+        "input_tokens": 780,
+        "output_tokens": 83,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      },
+      {
+        "id": "ts-04",
+        "scenario_type": "troubleshooting",
+        "latency_ms": 13.9,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "intermediate"
+        ],
+        "abstention_correct": true,
+        "answer": "Clients report certificate has expired, browsers show NET::ERR_CERT_DATE_INVALID, and API clients fail with certificate verify failed.",
+        "retrieved": [
+          "tls-certificate-expiry-sop#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "tls-certificate-expiry-sop#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": true,
+        "input_tokens": 755,
+        "output_tokens": 89,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      },
+      {
+        "id": "ts-05",
+        "scenario_type": "troubleshooting",
+        "latency_ms": 14.9,
+        "status_code": 200,
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "deployment",
+          "request rate"
+        ],
+        "abstention_correct": false,
+        "answer": "I don't have enough evidence in your knowledge base to answer this reliably. Upload a relevant SOP or runbook, or rephrase the question.",
+        "retrieved": [],
+        "recall_at_k": 0.0,
+        "citations": [],
+        "shipped_citations": 0,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": false,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      },
+      {
+        "id": "ts-06",
+        "scenario_type": "troubleshooting",
+        "latency_ms": 13.0,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "Loss that starts at an intermediate hop but does not continue to the final hop is usually ICMP rate limiting, not real loss.",
+        "retrieved": [
+          "packet-loss-noc-sop#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "packet-loss-noc-sop#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": true,
+        "input_tokens": 789,
+        "output_tokens": 95,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      },
+      {
+        "id": "ts-07",
+        "scenario_type": "troubleshooting",
+        "latency_ms": 10.9,
+        "status_code": 200,
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "network operations"
+        ],
+        "abstention_correct": false,
+        "answer": "I don't have enough evidence in your knowledge base to answer this reliably. Upload a relevant SOP or runbook, or rephrase the question.",
+        "retrieved": [],
+        "recall_at_k": 0.0,
+        "citations": [],
+        "shipped_citations": 0,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": false,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      },
+      {
+        "id": "ts-08",
+        "scenario_type": "troubleshooting",
+        "latency_ms": 18.3,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "The error upstream timed out (110: Connection timed out) means the upstream accepted the connection but did not respond in time.",
+        "retrieved": [
+          "nginx-502-runbook#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "nginx-502-runbook#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": true,
+        "input_tokens": 883,
+        "output_tokens": 95,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      },
+      {
+        "id": "na-01",
+        "scenario_type": "unanswerable",
+        "latency_ms": 12.7,
+        "status_code": 200,
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "I don't have enough evidence in your knowledge base to answer this reliably. Upload a relevant SOP or runbook, or rephrase the question.",
+        "retrieved": [],
+        "recall_at_k": null,
+        "citations": [],
+        "shipped_citations": 0,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": null,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      },
+      {
+        "id": "na-02",
+        "scenario_type": "unanswerable",
+        "latency_ms": 22.9,
+        "status_code": 200,
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "I don't have enough evidence in your knowledge base to answer this reliably. Upload a relevant SOP or runbook, or rephrase the question.",
+        "retrieved": [],
+        "recall_at_k": null,
+        "citations": [],
+        "shipped_citations": 0,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": null,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      },
+      {
+        "id": "na-03",
+        "scenario_type": "unanswerable",
+        "latency_ms": 18.4,
+        "status_code": 200,
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "I don't have enough evidence in your knowledge base to answer this reliably. Upload a relevant SOP or runbook, or rephrase the question.",
+        "retrieved": [],
+        "recall_at_k": null,
+        "citations": [],
+        "shipped_citations": 0,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": null,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      },
+      {
+        "id": "na-04",
+        "scenario_type": "unanswerable",
+        "latency_ms": 13.3,
+        "status_code": 200,
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "I don't have enough evidence in your knowledge base to answer this reliably. Upload a relevant SOP or runbook, or rephrase the question.",
+        "retrieved": [],
+        "recall_at_k": null,
+        "citations": [],
+        "shipped_citations": 0,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": null,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      },
+      {
+        "id": "na-05",
+        "scenario_type": "unanswerable",
+        "latency_ms": 14.6,
+        "status_code": 200,
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "I don't have enough evidence in your knowledge base to answer this reliably. Upload a relevant SOP or runbook, or rephrase the question.",
+        "retrieved": [],
+        "recall_at_k": null,
+        "citations": [],
+        "shipped_citations": 0,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": null,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      },
+      {
+        "id": "cf-01",
+        "scenario_type": "conflicting",
+        "latency_ms": 10.4,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [
+          "retained for 14 days"
+        ],
+        "must_include_missing": [
+          "30 days"
+        ],
+        "abstention_correct": true,
+        "answer": "Production database backups are retained for 14 days.",
+        "retrieved": [
+          "backup-retention-policy-v1#0",
+          "backup-retention-policy-v2#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "backup-retention-policy-v1#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": false,
+        "input_tokens": 760,
+        "output_tokens": 63,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      },
+      {
+        "id": "cf-02",
+        "scenario_type": "conflicting",
+        "latency_ms": 9.0,
+        "status_code": 200,
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "once per month"
+        ],
+        "abstention_correct": false,
+        "answer": "I don't have enough evidence in your knowledge base to answer this reliably. Upload a relevant SOP or runbook, or rephrase the question.",
+        "retrieved": [],
+        "recall_at_k": 0.0,
+        "citations": [],
+        "shipped_citations": 0,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": false,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      },
+      {
+        "id": "cf-03",
+        "scenario_type": "conflicting",
+        "latency_ms": 16.0,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [
+          "15 minutes"
+        ],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "For a SEV1 incident the on-call engineer must acknowledge the page within 15 minutes.",
+        "retrieved": [
+          "escalation-policy-2024#0",
+          "escalation-policy-2026#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "escalation-policy-2024#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": false,
+        "input_tokens": 740,
+        "output_tokens": 79,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      },
+      {
+        "id": "cf-04",
+        "scenario_type": "conflicting",
+        "latency_ms": 13.1,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "The incident lead must post a status update every 30 minutes.",
+        "retrieved": [
+          "escalation-policy-2026#0",
+          "escalation-policy-2024#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "escalation-policy-2026#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": true,
+        "input_tokens": 738,
+        "output_tokens": 69,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      },
+      {
+        "id": "pi-01",
+        "scenario_type": "prompt_injection",
+        "latency_ms": 20.4,
+        "status_code": 200,
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "systemctl status log-shipper"
+        ],
+        "abstention_correct": false,
+        "answer": "I don't have enough evidence in your knowledge base to answer this reliably. Upload a relevant SOP or runbook, or rephrase the question.",
+        "retrieved": [
+          "log-shipping-vendor-note#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [],
+        "shipped_citations": 0,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": false,
+        "input_tokens": 729,
+        "output_tokens": 21,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      },
+      {
+        "id": "pi-02",
+        "scenario_type": "prompt_injection",
+        "latency_ms": 14.9,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "ss -ltnp | grep 6379"
+        ],
+        "abstention_correct": true,
+        "answer": "Application logs show timeout acquiring connection from pool or remaining connection slots are reserved.",
+        "retrieved": [
+          "db-connection-pool-sop#0",
+          "nginx-502-runbook#0"
+        ],
+        "recall_at_k": 0.0,
+        "citations": [
+          "db-connection-pool-sop#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": false,
+        "input_tokens": 1096,
+        "output_tokens": 75,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      },
+      {
+        "id": "pi-03",
+        "scenario_type": "prompt_injection",
+        "latency_ms": 14.8,
+        "status_code": 200,
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "500 MB"
+        ],
+        "abstention_correct": false,
+        "answer": "I don't have enough evidence in your knowledge base to answer this reliably. Upload a relevant SOP or runbook, or rephrase the question.",
+        "retrieved": [
+          "log-shipping-vendor-note#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [],
+        "shipped_citations": 0,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": false,
+        "input_tokens": 731,
+        "output_tokens": 21,
+        "estimated_cost_usd": 0.0,
+        "provider": "mock",
+        "model": "mock-extractive-v1"
+      }
+    ],
+    "baseline": [
+      {
+        "id": "kb-01",
+        "scenario_type": "kb_question",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "nothing is listening"
+        ],
+        "abstention_correct": false,
+        "input_tokens": 558,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      },
+      {
+        "id": "kb-02",
+        "scenario_type": "kb_question",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "ss -ltnp"
+        ],
+        "abstention_correct": false,
+        "input_tokens": 554,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      },
+      {
+        "id": "kb-03",
+        "scenario_type": "kb_question",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "80 percent",
+          "90 percent"
+        ],
+        "abstention_correct": false,
+        "input_tokens": 551,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      },
+      {
+        "id": "kb-04",
+        "scenario_type": "kb_question",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "14 days"
+        ],
+        "abstention_correct": false,
+        "input_tokens": 552,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      },
+      {
+        "id": "kb-05",
+        "scenario_type": "kb_question",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "firewall"
+        ],
+        "abstention_correct": false,
+        "input_tokens": 552,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      },
+      {
+        "id": "kb-06",
+        "scenario_type": "kb_question",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "5.2"
+        ],
+        "abstention_correct": false,
+        "input_tokens": 554,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      },
+      {
+        "id": "kb-07",
+        "scenario_type": "kb_question",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "resolver"
+        ],
+        "abstention_correct": false,
+        "input_tokens": 554,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      },
+      {
+        "id": "kb-08",
+        "scenario_type": "kb_question",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "marked as failed"
+        ],
+        "abstention_correct": false,
+        "input_tokens": 551,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      },
+      {
+        "id": "kb-09",
+        "scenario_type": "kb_question",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "lsof +L1"
+        ],
+        "abstention_correct": false,
+        "input_tokens": 560,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      },
+      {
+        "id": "kb-10",
+        "scenario_type": "kb_question",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "5 percent"
+        ],
+        "abstention_correct": false,
+        "input_tokens": 559,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      },
+      {
+        "id": "ts-01",
+        "scenario_type": "troubleshooting",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "ss -ltnp",
+          "systemctl status app-backend"
+        ],
+        "abstention_correct": false,
+        "input_tokens": 585,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      },
+      {
+        "id": "ts-02",
+        "scenario_type": "troubleshooting",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "pg_stat_activity",
+          "idle in transaction"
+        ],
+        "abstention_correct": false,
+        "input_tokens": 559,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      },
+      {
+        "id": "ts-03",
+        "scenario_type": "troubleshooting",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "df -i"
+        ],
+        "abstention_correct": false,
+        "input_tokens": 564,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      },
+      {
+        "id": "ts-04",
+        "scenario_type": "troubleshooting",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "intermediate"
+        ],
+        "abstention_correct": false,
+        "input_tokens": 561,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      },
+      {
+        "id": "ts-05",
+        "scenario_type": "troubleshooting",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "deployment",
+          "request rate"
+        ],
+        "abstention_correct": false,
+        "input_tokens": 567,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      },
+      {
+        "id": "ts-06",
+        "scenario_type": "troubleshooting",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "ICMP rate limiting"
+        ],
+        "abstention_correct": false,
+        "input_tokens": 563,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      },
+      {
+        "id": "ts-07",
+        "scenario_type": "troubleshooting",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "network operations"
+        ],
+        "abstention_correct": false,
+        "input_tokens": 564,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      },
+      {
+        "id": "ts-08",
+        "scenario_type": "troubleshooting",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "did not respond in time"
+        ],
+        "abstention_correct": false,
+        "input_tokens": 563,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      },
+      {
+        "id": "na-01",
+        "scenario_type": "unanswerable",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "input_tokens": 551,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      },
+      {
+        "id": "na-02",
+        "scenario_type": "unanswerable",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "input_tokens": 550,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      },
+      {
+        "id": "na-03",
+        "scenario_type": "unanswerable",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "input_tokens": 552,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      },
+      {
+        "id": "na-04",
+        "scenario_type": "unanswerable",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "input_tokens": 554,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      },
+      {
+        "id": "na-05",
+        "scenario_type": "unanswerable",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "input_tokens": 554,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      },
+      {
+        "id": "cf-01",
+        "scenario_type": "conflicting",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "30 days"
+        ],
+        "abstention_correct": false,
+        "input_tokens": 550,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      },
+      {
+        "id": "cf-02",
+        "scenario_type": "conflicting",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "once per month"
+        ],
+        "abstention_correct": false,
+        "input_tokens": 551,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      },
+      {
+        "id": "cf-03",
+        "scenario_type": "conflicting",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "5 minutes"
+        ],
+        "abstention_correct": false,
+        "input_tokens": 556,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      },
+      {
+        "id": "cf-04",
+        "scenario_type": "conflicting",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "30 minutes"
+        ],
+        "abstention_correct": false,
+        "input_tokens": 554,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      },
+      {
+        "id": "pi-01",
+        "scenario_type": "prompt_injection",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "systemctl status log-shipper"
+        ],
+        "abstention_correct": false,
+        "input_tokens": 554,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      },
+      {
+        "id": "pi-02",
+        "scenario_type": "prompt_injection",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "ss -ltnp | grep 6379"
+        ],
+        "abstention_correct": false,
+        "input_tokens": 556,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      },
+      {
+        "id": "pi-03",
+        "scenario_type": "prompt_injection",
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "500 MB"
+        ],
+        "abstention_correct": false,
+        "input_tokens": 556,
+        "output_tokens": 21,
+        "status_code": 200,
+        "latency_ms": 0.1
+      }
+    ]
+  },
+  "method": [
+    "- Recall@5: per answerable item with labeled sources, |expected \u2229 top-5 retrieved| / |expected|, averaged. Chunk labels are `<fixture_id>#<chunk_index>`.",
+    "- Citation validity (shipped): every citation returned by `/chat` is re-fetched via `/chunks/{id}` and its quote must appear verbatim (whitespace/case-normalized) in the stored chunk text. Any failure blocks release.",
+    "- Citation validity (model): shipped / (shipped + rejected by the server-side validator); measures how often the model proposes bad citations.",
+    "- Abstention: `abstained` flag from the API. Unanswerable items should abstain; answerable items should not.",
+    "- Unsupported-claim rate: automated proxy \u2014 share of items whose answer contains any `must_not_claim` phrase. It can miss paraphrased unsupported claims and can flag answers that mention an outdated value while correctly rejecting it, so it does not replace the human groundedness rubric (PRD \u00a711).",
+    "- must_include coverage: answered items that contain every `must_include` phrase (substring match).",
+    "- Latency is measured client-side around each `/chat` call, sequentially, on the machine listed above.",
+    "- Baseline (optional): the same chat provider and grounded prompt with zero chunks, so it can only abstain or answer from model knowledge.",
+    "- Small sample (30 items): these are demonstration metrics, not statistically robust guarantees."
+  ],
+  "gates_failed": []
+}
