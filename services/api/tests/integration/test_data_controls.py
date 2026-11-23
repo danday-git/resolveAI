@@ -64,7 +64,11 @@ def test_external_provider_is_blocked_until_the_user_consents(
         assert response.json()["error"]["details"] == {"providers": ["openai"]}
     assert client.get("/api/v1/auth/me", headers=auth_headers).json()["llm_consent_required"]
 
-    granted = client.put("/api/v1/auth/llm-consent", headers=auth_headers, json={"granted": True})
+    granted = client.put(
+        "/api/v1/auth/llm-consent",
+        headers=auth_headers,
+        json={"granted": True, "providers": ["openai"]},
+    )
     assert granted.json()["llm_consent_required"] is False and granted.json()["llm_consent_at"]
     assert client.post(calls[0][0], headers=auth_headers, **calls[0][1]).status_code == 200
     assert client.post(calls[2][0], headers=auth_headers, **calls[2][1]).status_code == 200
@@ -78,7 +82,11 @@ def test_queued_document_is_not_sent_after_consent_is_withdrawn(
     client, auth_headers, external_provider, monkeypatch
 ):
     monkeypatch.setattr(get_settings(), "ingest_inline", False)
-    client.put("/api/v1/auth/llm-consent", headers=auth_headers, json={"granted": True})
+    client.put(
+        "/api/v1/auth/llm-consent",
+        headers=auth_headers,
+        json={"granted": True, "providers": ["openai"]},
+    )
     upload = client.post(
         "/api/v1/documents",
         headers=auth_headers,
@@ -96,7 +104,11 @@ def test_queued_document_is_not_sent_after_consent_is_withdrawn(
     assert (document["status"], document["error_code"]) == ("failed", "CONSENT_REQUIRED")
 
     # Allowing it again queues the document, because the same file cannot be uploaded twice.
-    client.put("/api/v1/auth/llm-consent", headers=auth_headers, json={"granted": True})
+    client.put(
+        "/api/v1/auth/llm-consent",
+        headers=auth_headers,
+        json={"granted": True, "providers": ["openai"]},
+    )
     document = client.get(f"/api/v1/documents/{upload.json()['id']}", headers=auth_headers).json()
     assert (document["status"], document["error_code"]) == ("queued", None)
 
@@ -125,7 +137,11 @@ def test_eval_account_can_load_fixtures_with_an_external_provider(
 def test_consent_does_not_carry_over_to_another_provider(
     client, auth_headers, external_provider, monkeypatch
 ):
-    client.put("/api/v1/auth/llm-consent", headers=auth_headers, json={"granted": True})
+    client.put(
+        "/api/v1/auth/llm-consent",
+        headers=auth_headers,
+        json={"granted": True, "providers": ["openai"]},
+    )
     monkeypatch.setattr(get_settings(), "llm_provider", "anthropic")
     blocked = client.post("/api/v1/chat", headers=auth_headers, json={"question": "hi"})
     assert blocked.json()["error"]["details"] == {"providers": ["anthropic"]}

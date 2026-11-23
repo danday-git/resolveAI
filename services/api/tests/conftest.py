@@ -56,7 +56,7 @@ def clean_database(migrate_database):
             text(
                 "TRUNCATE TABLE feedback, request_logs, llm_requests, rca_reports, analyses, "
                 "incidents, messages, conversations, chunks, documents, audit_events, "
-                "password_reset_tokens, users CASCADE"
+                "password_reset_tokens, app_settings, users CASCADE"
             )
         )
     yield

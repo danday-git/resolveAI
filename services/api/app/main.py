@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api import admin, auth, chat, documents, incidents, metrics
+from app.core.ai_settings import effective_settings
 from app.core.config import Settings, get_settings
 from app.core.database import engine, get_db
 from app.core.errors import (
@@ -58,7 +59,8 @@ def validate_embedding_schema(database_engine, settings: Settings) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
-    app.state.chat_provider = get_chat_provider(settings)
+    # A provider the administrator saved wins, so a key kept only in the database is enough.
+    app.state.chat_provider = get_chat_provider(effective_settings())
     app.state.embedding_provider = get_embedding_provider(settings)
     validate_embedding_schema(engine, settings)
     yield

@@ -161,6 +161,18 @@ export type Incident = {
 
 export type IncidentDetail = Incident & { latest_analysis: Analysis | null; rca: Rca | null };
 
+type KeyState = { set: boolean; last4: string | null; source: "admin" | "env" | null };
+export type AiSettings = {
+  llm_provider: "openai" | "anthropic" | "ollama" | "mock";
+  llm_model: string;
+  source: "admin" | "env";
+  updated_by: string | null;
+  updated_at: string | null;
+  openai_api_key: KeyState;
+  anthropic_api_key: KeyState;
+  embedding: { provider: string; model: string; dim: number };
+  external_llm_providers: string[];
+};
 export type AdminUser = { id: string; email: string; role: "admin" | "member"; is_active: boolean; sso: boolean; created_at: string };
 export type AuditEvent = {
   id: string;

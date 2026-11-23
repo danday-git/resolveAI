@@ -24,7 +24,7 @@ function DataSharing() {
     setBusy(true);
     setError(null);
     try {
-      setMe(await api<Me>("/auth/llm-consent", { method: "PUT", body: JSON.stringify({ granted }) }));
+      setMe(await api<Me>("/auth/llm-consent", { method: "PUT", body: JSON.stringify({ granted, providers: me?.external_llm_providers ?? [] }) }));
     } catch (e) {
       setError(errorText(e));
     }
