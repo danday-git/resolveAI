@@ -1,0 +1,11 @@
+# Synthetic credentials are planted in eval fixtures and tests on purpose (redaction tests).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Synthetic test fixtures"
+paths = [
+  '''evals/fixtures/''',
+  '''services/api/tests/''',
+  '''\.env\.example''',
+]

@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: resolveai
+          POSTGRES_PASSWORD: resolveai
+          POSTGRES_DB: resolveai_test
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U resolveai -d resolveai_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: services/api
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://resolveai:resolveai@localhost:5433/resolveai_test
+      REQUIRE_TEST_DB: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --frozen
+      - name: Lint
+        run: uv run ruff check . && uv run ruff format --check .
+      - name: Typecheck
+        run: uv run mypy app
+      - name: Tests (unit + integration + E2E, LLM providers mocked)
+        run: uv run pytest -q
+      - name: Evaluation (mock providers, release gates)
+        env:
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+          JWT_SECRET: ci-only-jwt-secret-not-used-anywhere-else
+          LLM_PROVIDER: mock
+          EMBEDDING_PROVIDER: mock
+          EMBEDDING_DIM: "256"
+          UPLOAD_DIR: /tmp/resolveai-uploads
+          RATE_LIMIT_PER_MINUTE: "10000"
+        run: |
+          uv run alembic upgrade head
+          uv run python ../../evals/run_eval.py --baseline --out-dir /tmp/eval-reports --name ci-mock
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-report
+          path: /tmp/eval-reports
+          if-no-files-found: ignore
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - run: npm run typecheck # after build: next build generates next-env.d.ts
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Secret scan (gitleaks)
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz | tar xz gitleaks
+          ./gitleaks detect --source . --redact --verbose --config .gitleaks.toml
+      - uses: astral-sh/setup-uv@v5
+      - name: Python dependency audit
+        working-directory: services/api
+        run: uv export --frozen --no-dev --no-hashes -o /tmp/requirements.txt && uvx pip-audit -r /tmp/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: npm dependency audit
+        working-directory: apps/web
+        run: npm audit --omit=dev --audit-level=high
