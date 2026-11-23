@@ -43,7 +43,7 @@ export default function AiProviderPage() {
   }, []);
 
   const keyField = provider === "openai" || provider === "anthropic" ? KEY_FIELD[provider] : null;
-  const run = async (kind: "save" | "test" | "remove", body?: Record<string, string>) => {
+  const run = async (kind: "save" | "test" | "remove", body?: Record<string, string | null>) => {
     setBusy(kind);
     setError(null);
     setNotice(null);
@@ -52,7 +52,7 @@ export default function AiProviderPage() {
         const r = await post<{ ok: boolean; provider: string; model?: string; latency_ms?: number; error?: string }>("/admin/ai/test");
         setNotice(r.ok ? `Connected to ${r.provider} ${r.model} in ${r.latency_ms} ms.` : `The provider did not answer (${r.error}). Check the model name and key.`);
       } else {
-        show(await api<AiSettings>("/admin/ai", { method: "PUT", body: JSON.stringify({ llm_provider: provider, llm_model: model, ...body }) }));
+        show(await api<AiSettings>("/admin/ai", { method: "PUT", body: JSON.stringify(body) }));
         setNotice(kind === "remove" ? "Key removed." : "Saved. New questions and analyses use this model.");
       }
     } catch (e) {
@@ -78,7 +78,7 @@ export default function AiProviderPage() {
               className="max-w-xl space-y-5"
               onSubmit={(e) => {
                 e.preventDefault();
-                run("save", keyField && key.trim() ? { [keyField]: key.trim() } : undefined);
+                run("save", { llm_provider: provider, llm_model: model, ...(keyField && key.trim() ? { [keyField]: key.trim() } : {}) });
               }}
             >
               <Field label="Provider">
@@ -134,7 +134,7 @@ export default function AiProviderPage() {
                   Test connection
                 </Button>
                 {keyField && data[keyField].source === "admin" && (
-                  <Button variant="secondary" icon="trash" loading={busy === "remove"} onClick={() => run("remove", { [keyField]: "" })}>
+                  <Button variant="secondary" icon="trash" loading={busy === "remove"} onClick={() => run("remove", { llm_provider: data.llm_provider, llm_model: data.llm_model, [keyField]: "" })}>
                     Remove saved key
                   </Button>
                 )}
