@@ -18,6 +18,9 @@ dependencies = [
     "python-multipart>=0.0.12",
     "sqlalchemy>=2.0",
     "uvicorn[standard]>=0.30",
+    # Below 3 on purpose: 3.x dropped the init options that keep local variables and PII
+    # out of reports. Re-check app/core/observability.py before raising this.
+    "sentry-sdk>=2.0,<2.76",
 ]
 
 [dependency-groups]

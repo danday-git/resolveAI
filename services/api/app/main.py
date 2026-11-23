@@ -1,17 +1,20 @@
+import hmac
 import logging
 from contextlib import asynccontextmanager
+from typing import Annotated
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api import admin, auth, chat, documents, incidents, metrics
 from app.core.config import Settings, get_settings
-from app.core.database import engine
+from app.core.database import engine, get_db
 from app.core.errors import (
     ApiError,
     api_error_handler,
@@ -21,6 +24,7 @@ from app.core.errors import (
     validation_error_handler,
 )
 from app.core.logging import RequestLoggingMiddleware
+from app.core.observability import init_sentry, render_metrics
 from app.services.llm.base import LLMError
 from app.services.llm.factory import get_chat_provider, get_embedding_provider
 
@@ -61,6 +65,7 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
+    init_sentry()
     app = FastAPI(title="ResolveAI API", version="0.1.0", lifespan=lifespan)
     settings = get_settings()
     app.add_middleware(RequestLoggingMiddleware)
@@ -86,6 +91,17 @@ def create_app() -> FastAPI:
     @app.get("/health")
     def health():
         return {"status": "ok"}
+
+    @app.get("/metrics", include_in_schema=False)
+    def prometheus(request: Request, db: Annotated[Session, Depends(get_db)]):
+        """Prometheus scrape target. Off until METRICS_TOKEN is set; it reports all users."""
+        token = get_settings().metrics_token
+        if token is None or not token.get_secret_value():
+            raise ApiError(404, "NOT_FOUND", "Not found")
+        expected = f"Bearer {token.get_secret_value()}"
+        if not hmac.compare_digest(request.headers.get("authorization", ""), expected):
+            raise ApiError(401, "UNAUTHORIZED", "A valid metrics token is required")
+        return PlainTextResponse(render_metrics(db), media_type="text/plain; version=0.0.4")
 
     @app.get("/ready")
     def ready():

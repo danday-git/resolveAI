@@ -10,6 +10,7 @@ from sqlalchemy import and_, or_, select
 from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.core.limits import purge_rate_limits
+from app.core.observability import init_sentry
 from app.models import Document, DocumentStatus
 from app.services.ingestion.pipeline import _fail, ingest_document
 from app.services.llm.base import EmbeddingProvider
@@ -59,6 +60,7 @@ def run_once(embedder: EmbeddingProvider | None = None) -> bool:
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
+    init_sentry()
     running = True
 
     def stop(*_):

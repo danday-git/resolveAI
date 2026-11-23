@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     max_upload_mb: int = 10
     # True ingests inside the API process (one-process dev, tests). False leaves uploads queued
     # for `python -m app.worker`, which also retries and recovers interrupted documents.
+    metrics_token: SecretStr | None = None
+    sentry_dsn: SecretStr | None = None
+    sentry_environment: str = "production"
     clamav_host: str | None = None
     clamav_port: int = 3310
     ocr_enabled: bool = False

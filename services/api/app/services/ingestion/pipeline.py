@@ -2,6 +2,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+import sentry_sdk
 from sqlalchemy import select
 
 from app.core.config import get_settings
@@ -107,6 +108,7 @@ def ingest_document(
             _retry_or_fail(db, document, "EMBEDDING_FAILED", max_attempts)
         except Exception:
             db.rollback()
+            sentry_sdk.capture_exception()
             logger.warning("Document ingestion failed")
             _retry_or_fail(db, document, "INGESTION_FAILED", max_attempts)
 

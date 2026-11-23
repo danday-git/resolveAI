@@ -1,0 +1,22 @@
+# Public entry point. With a real domain in SITE_ADDRESS, Caddy obtains and renews the
+# certificate from Let's Encrypt on its own; with "localhost" it issues a local one.
+{$SITE_ADDRESS:localhost} {
+	encode zstd gzip
+
+	# Uploads are capped by the API at MAX_UPLOAD_MB; stop larger bodies at the edge.
+	request_body {
+		max_size 11MB
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	# Only the web app is exposed; it proxies /api to the API. The API's own /metrics,
+	# /health and /ready are not under /api, so they cannot be reached from outside.
+	reverse_proxy web:3000
+}

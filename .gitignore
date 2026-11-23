@@ -15,3 +15,5 @@ out/
 .turbo/
 *.tsbuildinfo
 .hallmark/
+# scripts/backup.sh output: holds user data
+backups/
