@@ -79,7 +79,7 @@
       </div>
 <pre><code>git clone https://github.com/danday-git/resolveAI && cd resolveAI
 cp .env.example .env
-sed -i 's/^\(LLM\|EMBEDDING\)_PROVIDER=openai/\1_PROVIDER=mock/' .env
+sed -i.bak -E 's/^(LLM|EMBEDDING)_PROVIDER=openai/\1_PROVIDER=mock/' .env  # works with GNU and BSD sed
 docker compose -f infra/docker-compose.yml --env-file .env --profile web up --build -d
 docker compose -f infra/docker-compose.yml exec api python -m app.seed --with-fixtures
 # http://localhost:3000, demo@resolveai.local / change-me-demo-password</code></pre>
