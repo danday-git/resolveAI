@@ -323,6 +323,10 @@ def _oidc_user(db: Session, request: Request, claims: dict) -> User | None:
     email = str(claims.get("email", "")).lower()
     if not email or claims.get("email_verified") is not True:
         return None
+    # SSO creates accounts even with registration closed, so a public provider needs a limit.
+    allowed = {d.strip() for d in get_settings().oidc_allowed_domains.lower().split(",")} - {""}
+    if allowed and email.rpartition("@")[2] not in allowed:
+        return None
     subject = f"{claims['iss']}|{claims['sub']}"
     user = db.scalar(select(User).where(User.oidc_subject == subject))
     if user is None:

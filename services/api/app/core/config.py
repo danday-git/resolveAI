@@ -75,6 +75,9 @@ class Settings(BaseSettings):
     oidc_issuer: str | None = None
     oidc_client_id: str | None = None
     oidc_client_secret: SecretStr | None = None
+    # Comma-separated email domains allowed to sign in through SSO; empty allows every
+    # identity the provider accepts.
+    oidc_allowed_domains: str = ""
 
     @field_validator("jwt_secret")
     @classmethod

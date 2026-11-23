@@ -14,7 +14,7 @@ Copy `.env.example` to `.env` on the host and set at least:
 | `SITE_ADDRESS` | Public domain, e.g. `resolveai.example.com`. Its DNS record must point at the host |
 | `APP_URL`, `CORS_ORIGINS` | `https://<SITE_ADDRESS>` (used in password reset links) |
 | `LLM_PROVIDER`, `EMBEDDING_PROVIDER` and keys | See the README |
-| `ALLOW_REGISTRATION` | `false` if accounts should only be created by invitation |
+| `ALLOW_REGISTRATION` | `false` to close password sign-up. Single sign-on still creates an account for every identity the provider accepts; limit those with `OIDC_ALLOWED_DOMAINS` |
 
 Change the database password in `infra/docker-compose.yml` (`POSTGRES_PASSWORD` and the two
 `DATABASE_URL` values) before the first start.

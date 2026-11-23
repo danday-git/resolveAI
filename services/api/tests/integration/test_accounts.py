@@ -196,6 +196,15 @@ def sso(client, idp, **claims):
     )
 
 
+def test_sso_only_admits_allowed_email_domains(client, idp, monkeypatch):
+    monkeypatch.setattr(get_settings(), "oidc_allowed_domains", "Example.com, corp.test")
+    assert sso(client, idp, email="a@evil.test").headers["location"].endswith("reason=sso")
+    assert sso(client, idp, email="a@example.com.evil.test").headers["location"].endswith("sso")
+    with SessionLocal() as db:
+        assert db.scalar(select(User).where(User.email.like("a@%"))) is None
+    assert sso(client, idp, email="a@example.com").headers["location"].endswith("/")
+
+
 def test_sso_creates_a_member_and_signs_in(client, idp):
     response = sso(client, idp, email="Sso.User@Example.com")
     assert response.headers["location"] == "http://localhost:3000/"
