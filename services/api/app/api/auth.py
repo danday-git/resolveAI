@@ -19,6 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, object_session
 
 from app.api.deps import get_current_user, missing_llm_consent
+from app.core.ai_settings import effective_settings
 from app.core.audit import audit
 from app.core.config import get_settings
 from app.core.database import get_db
@@ -88,7 +89,7 @@ def _public(user: User) -> dict:
         "id": str(user.id),
         "email": user.email,
         "role": user.role,
-        "external_llm_providers": get_settings().external_llm_providers,
+        "external_llm_providers": effective_settings().external_llm_providers,
         "llm_consent_required": bool(missing_llm_consent(user)),
         "llm_consent_at": user.llm_consent_at,
     }
@@ -449,7 +450,7 @@ def set_llm_consent(
     user: Annotated[User, Depends(get_current_user)],
 ):
     """Records the user's own decision to send their data to the external model providers."""
-    providers = get_settings().external_llm_providers
+    providers = effective_settings(db).external_llm_providers
     if body.granted and not providers:
         raise ApiError(409, "NO_EXTERNAL_PROVIDER", "No external model provider is configured")
     user.llm_consent_at = datetime.now(UTC) if body.granted else None

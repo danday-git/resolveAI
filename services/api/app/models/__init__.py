@@ -1,6 +1,7 @@
 from app.models.base import Base
 from app.models.entities import (
     Analysis,
+    AppSetting,
     AuditEvent,
     CauseStatus,
     Chunk,
@@ -23,6 +24,7 @@ from app.models.entities import (
 
 __all__ = [
     "Analysis",
+    "AppSetting",
     "AuditEvent",
     "Base",
     "CauseStatus",

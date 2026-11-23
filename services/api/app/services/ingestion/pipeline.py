@@ -5,6 +5,7 @@ from pathlib import Path
 import sentry_sdk
 from sqlalchemy import select
 
+from app.core.ai_settings import effective_settings
 from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.core.limits import check_daily_budget
@@ -46,7 +47,7 @@ def ingest_document(
             owner = db.get(User, document.owner_id)
             if owner is not None:
                 # Consent may have been withdrawn while the document waited in the queue.
-                if settings.missing_llm_consent(owner.llm_consent_providers):
+                if effective_settings(db).missing_llm_consent(owner.llm_consent_providers):
                     raise ExtractionError("CONSENT_REQUIRED")
                 check_daily_budget(db, owner)
             result = provider.embed([draft.text for draft in drafts])

@@ -4,7 +4,7 @@ from fastapi import Cookie, Depends, Header, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
+from app.core.ai_settings import effective_settings
 from app.core.database import get_db
 from app.core.errors import ApiError
 from app.core.security import decode_access_token
@@ -56,7 +56,7 @@ def require_admin(user: User = Depends(get_current_user)) -> User:
 
 def missing_llm_consent(user: User) -> list[str]:
     """External providers in use that this user has not agreed to send data to."""
-    return get_settings().missing_llm_consent(user.llm_consent_providers)
+    return effective_settings().missing_llm_consent(user.llm_consent_providers)
 
 
 def require_llm_consent(user: User = Depends(get_current_user)) -> User:

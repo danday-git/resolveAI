@@ -71,6 +71,23 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class AppSetting(Base):
+    """Single row (id=1) of model settings an administrator chose; overrides the environment."""
+
+    __tablename__ = "app_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    llm_provider: Mapped[str] = mapped_column(String(20))
+    llm_model: Mapped[str] = mapped_column(String(100))
+    # Fernet-encrypted; never returned by the API.
+    openai_api_key: Mapped[str | None] = mapped_column(Text)
+    anthropic_api_key: Mapped[str | None] = mapped_column(Text)
+    updated_by: Mapped[str | None] = mapped_column(String(320))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
 class RateLimit(Base):
     __tablename__ = "rate_limits"
 
