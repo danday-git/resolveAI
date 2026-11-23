@@ -160,7 +160,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         {drawer && (
           <div
-            className="absolute inset-x-0 top-0 border-b border-rule-2 bg-paper-2 px-[var(--gutter)] pb-4"
+            className="absolute inset-x-0 top-0 max-h-dvh overflow-y-auto border-b border-rule-2 bg-paper-2 px-[var(--gutter)] pb-4"
             role="dialog"
             aria-modal="true"
             aria-label="Navigation"
