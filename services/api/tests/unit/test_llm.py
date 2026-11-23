@@ -441,5 +441,5 @@ def test_mock_tokens_split_latin_from_other_scripts():
     tokens = re.findall(_TOKEN, "vpnクライアントの最低バージョンは5.2")
     assert tokens == ["vpn", "クライアントの最低バージョンは", "5.2"]
     assert re.findall(_TOKEN, "für gäste: kantor-tamu") == ["für", "gäste:", "kantor-tamu"]
-    assert re.findall(_TOKEN, "ошибка: код ٤٠٣") == ["ошибка:", "код", "٤٠٣"]
+    assert re.findall(_TOKEN, "ошибка: код ٤٠٣ сети.") == ["ошибка", "код", "٤٠٣", "сети"]
     assert re.findall(_TOKEN, "điện diện") == ["điện", "diện"]
