@@ -54,7 +54,8 @@ def clean_database(migrate_database):
         connection.execute(
             text(
                 "TRUNCATE TABLE feedback, request_logs, llm_requests, rca_reports, analyses, "
-                "incidents, messages, conversations, chunks, documents, users CASCADE"
+                "incidents, messages, conversations, chunks, documents, audit_events, "
+                "password_reset_tokens, users CASCADE"
             )
         )
     yield
@@ -66,7 +67,9 @@ def client(clean_database):
     with SessionLocal() as db:
         db.add(
             User(
-                email="demo@resolveai.local", password_hash=hash_password("demo-password-for-tests")
+                email="demo@resolveai.local",
+                password_hash=hash_password("demo-password-for-tests"),
+                role="admin",
             )
         )
         db.commit()

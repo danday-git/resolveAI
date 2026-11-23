@@ -54,10 +54,10 @@ export function ThemeToggle({ className }: { className?: string }) {
   );
 }
 
-function NavLinks({ path, onNavigate }: { path: string; onNavigate?: () => void }) {
+function NavLinks({ path, admin, onNavigate }: { path: string; admin: boolean; onNavigate?: () => void }) {
   return (
     <ul className="flex flex-col gap-0.5">
-      {links.map(([href, label]) => {
+      {(admin ? [...links, ["/admin", "Admin"]] : links).map(([href, label]) => {
         const active = href === "/" ? path === "/" : path.startsWith(href);
         return (
           <li key={href}>
@@ -82,16 +82,16 @@ function NavLinks({ path, onNavigate }: { path: string; onNavigate?: () => void 
 export function AppShell({ children }: { children: ReactNode }) {
   const path = usePathname();
   const router = useRouter();
-  const [email, setEmail] = useState<string | null>(null);
+  const [me, setMe] = useState<{ email: string; role: string } | null>(null);
   const [drawer, setDrawer] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const wasDrawerOpen = useRef(false);
-  const isLogin = path === "/login";
+  const isLogin = ["/login", "/register", "/reset"].includes(path);
 
   useEffect(() => {
     if (isLogin) return;
-    api<{ email: string }>("/auth/me")
-      .then((u) => setEmail(u.email))
+    api<{ email: string; role: string }>("/auth/me")
+      .then(setMe)
       .catch(() => router.replace("/login"));
   }, [isLogin, router]);
 
@@ -125,9 +125,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   };
   const account = (
     <div className="border-t border-rule pt-3">
-      <p className="measured truncate px-3 text-muted" title={email ?? undefined}>
-        {email ?? "…"}
-      </p>
+      <Link
+        href="/account"
+        onClick={() => setDrawer(false)}
+        aria-current={path === "/account" ? "page" : undefined}
+        title={me ? `Account: ${me.email}` : undefined}
+        className="measured block truncate rounded-pill px-3 py-1 text-muted no-underline transition-colors hover:text-ink active:bg-rule aria-[current]:text-ink"
+      >
+        {me?.email ?? "…"}
+      </Link>
       <div className="mt-1 flex items-center justify-between gap-2">
         <ThemeToggle />
         <button className={btn("ghost", "sm")} onClick={signOut}>
@@ -147,7 +153,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Brand />
         </div>
         <nav aria-label="Main" className="mt-6 flex-1 overflow-y-auto">
-          <NavLinks path={path} />
+          <NavLinks path={path} admin={me?.role === "admin"} />
         </nav>
         {account}
       </aside>
@@ -185,7 +191,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </button>
             </div>
             <nav aria-label="Main" className="-mx-3 mb-3">
-              <NavLinks path={path} onNavigate={() => setDrawer(false)} />
+              <NavLinks path={path} admin={me?.role === "admin"} onNavigate={() => setDrawer(false)} />
             </nav>
             <div className="-mx-3">{account}</div>
           </div>

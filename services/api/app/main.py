@@ -9,7 +9,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api import auth, chat, documents, incidents, metrics
+from app.api import admin, auth, chat, documents, incidents, metrics
 from app.core.config import Settings, get_settings
 from app.core.database import engine
 from app.core.errors import (
@@ -77,6 +77,7 @@ def create_app() -> FastAPI:
     app.add_exception_handler(RequestValidationError, validation_error_handler)
     app.add_exception_handler(Exception, internal_error_handler)
     app.include_router(auth.router, prefix="/api/v1")
+    app.include_router(admin.router, prefix="/api/v1")
     app.include_router(documents.router, prefix="/api/v1")
     app.include_router(chat.router, prefix="/api/v1")
     app.include_router(incidents.router, prefix="/api/v1")

@@ -30,7 +30,8 @@ def create_access_token(user_id: UUID) -> tuple[str, datetime]:
     return token, expires
 
 
-def decode_access_token(token: str) -> tuple[UUID, bool]:
+def decode_access_token(token: str) -> tuple[UUID, datetime]:
+    """Returns the user id and when the token was issued."""
     try:
         payload = jwt.decode(
             token,
@@ -46,6 +47,6 @@ def decode_access_token(token: str) -> tuple[UUID, bool]:
     if datetime.fromtimestamp(exp, UTC) <= datetime.now(UTC):
         raise TimeoutError("expired")
     try:
-        return UUID(str(payload["sub"])), False
-    except (KeyError, ValueError):
+        return UUID(str(payload["sub"])), datetime.fromtimestamp(payload["iat"], UTC)
+    except (KeyError, ValueError, TypeError):
         raise ValueError("invalid") from None

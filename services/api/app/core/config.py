@@ -44,6 +44,16 @@ class Settings(BaseSettings):
     daily_budget_usd: float = 1.0
     cors_origins: str = "http://localhost:3000"
     cookie_secure: bool = False
+    app_url: str = "http://localhost:3000"
+    allow_registration: bool = True
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_password: SecretStr | None = None
+    smtp_from: str = "resolveai@localhost"
+    oidc_issuer: str | None = None
+    oidc_client_id: str | None = None
+    oidc_client_secret: SecretStr | None = None
 
     @field_validator("jwt_secret")
     @classmethod
@@ -52,7 +62,16 @@ class Settings(BaseSettings):
             raise ValueError("JWT_SECRET must be at least 32 characters")
         return value
 
-    @field_validator("openai_api_key", "anthropic_api_key", mode="before")
+    @field_validator(
+        "openai_api_key",
+        "anthropic_api_key",
+        "smtp_host",
+        "smtp_password",
+        "oidc_issuer",
+        "oidc_client_id",
+        "oidc_client_secret",
+        mode="before",
+    )
     @classmethod
     def empty_secret_is_missing(cls, value):
         return None if isinstance(value, str) and not value.strip() else value
@@ -78,6 +97,10 @@ class Settings(BaseSettings):
         if self.embedding_model is None:
             self.embedding_model = defaults[self.embedding_provider][1]
         return self
+
+    @property
+    def oidc_enabled(self) -> bool:
+        return bool(self.oidc_issuer and self.oidc_client_id and self.oidc_client_secret)
 
     @property
     def cors_origin_list(self) -> list[str]:

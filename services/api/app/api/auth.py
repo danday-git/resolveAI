@@ -1,20 +1,34 @@
+import base64
+import hashlib
+import hmac
+import logging
+import secrets
+import smtplib
+from datetime import UTC, datetime, timedelta
+from email.message import EmailMessage
 from threading import Lock
 from time import monotonic
 from typing import Annotated
+from urllib.parse import urlencode
 
+import httpx
+import jwt
 from email_validator import EmailNotValidError, validate_email
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Cookie, Depends, Request, Response
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, SecretStr, field_validator
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
+from app.core.audit import audit
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.errors import ApiError
-from app.core.security import create_access_token, verify_password
-from app.models import User
+from app.core.security import create_access_token, hash_password, verify_password
+from app.models import PasswordResetToken, User
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 _attempts: dict[str, list[float]] = {}
 _lock = Lock()
@@ -36,11 +50,39 @@ class LoginRequest(BaseModel):
         except EmailNotValidError:
             raise ValueError("Invalid email address") from None
         if local_domain:
-            return f"{normalized.local_part}@{domain.lower()}"
-        return normalized.normalized
+            return f"{normalized.local_part}@{domain.lower()}".lower()
+        return normalized.normalized.lower()
 
 
-def _check_login_limit(key: str) -> None:
+def _valid_password(value: SecretStr) -> SecretStr:
+    size = len(value.get_secret_value().encode())
+    # bcrypt reads at most 72 bytes; a longer password would be silently cut short.
+    if len(value.get_secret_value()) < 12 or size > 72:
+        raise ValueError("Password must be 12 to 72 characters")
+    return value
+
+
+class RegisterRequest(LoginRequest):
+    _password = field_validator("password")(_valid_password)
+
+
+class EmailRequest(LoginRequest):
+    password: SecretStr = SecretStr("")
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: SecretStr
+    new_password: SecretStr
+    _password = field_validator("new_password")(_valid_password)
+
+
+class ResetConfirmRequest(BaseModel):
+    token: str
+    new_password: SecretStr
+    _password = field_validator("new_password")(_valid_password)
+
+
+def _check_login_limit(key: str, limit: int = 10) -> None:
     global _last_prune
     now = monotonic()
     with _lock:
@@ -49,7 +91,7 @@ def _check_login_limit(key: str) -> None:
             _attempts[key] = recent
         else:
             _attempts.pop(key, None)
-        rate_limited = len(recent) >= 10
+        rate_limited = len(recent) >= limit
         if not rate_limited:
             recent.append(now)
             _attempts[key] = recent
@@ -62,18 +104,15 @@ def _check_login_limit(key: str) -> None:
             raise ApiError(429, "RATE_LIMITED", "Too many login attempts")
 
 
-@router.post("/login")
-def login(
-    body: LoginRequest,
-    request: Request,
-    response: Response,
-    db: Annotated[Session, Depends(get_db)],
-):
-    key = f"{body.email.lower()}:{request.client.host if request.client else ''}"
-    _check_login_limit(key)
-    user = db.scalar(select(User).where(User.email == body.email.lower()))
-    if user is None or not verify_password(body.password.get_secret_value(), user.password_hash):
-        raise ApiError(401, "INVALID_CREDENTIALS", "Email or password is incorrect")
+def _client(request: Request) -> str:
+    return request.client.host if request.client else ""
+
+
+def _public(user: User) -> dict:
+    return {"id": str(user.id), "email": user.email, "role": user.role}
+
+
+def _start_session(response: Response, user: User) -> dict:
     token, expires_at = create_access_token(user.id)
     response.set_cookie(
         "resolveai_session",
@@ -88,8 +127,299 @@ def login(
         "access_token": token,
         "token_type": "bearer",
         "expires_at": expires_at,
-        "user": {"id": str(user.id), "email": user.email},
+        "user": _public(user),
     }
+
+
+def set_password(user: User, password: str) -> None:
+    user.password_hash = hash_password(password)
+    # Whole seconds, like a token's iat: a session opened in the same second stays valid.
+    user.password_changed_at = datetime.now(UTC).replace(microsecond=0)
+
+
+def create_reset_token(db: Session, user: User) -> str:
+    token = secrets.token_urlsafe(32)
+    db.add(
+        PasswordResetToken(
+            user_id=user.id,
+            token_hash=hashlib.sha256(token.encode()).hexdigest(),
+            expires_at=datetime.now(UTC) + timedelta(minutes=30),
+        )
+    )
+    return f"{get_settings().app_url}/reset?token={token}"
+
+
+@router.get("/config")
+def auth_config():
+    settings = get_settings()
+    return {"registration": settings.allow_registration, "oidc": settings.oidc_enabled}
+
+
+@router.post("/login")
+def login(
+    body: LoginRequest,
+    request: Request,
+    response: Response,
+    db: Annotated[Session, Depends(get_db)],
+):
+    _check_login_limit(f"{body.email}:{_client(request)}")
+    user = db.scalar(select(User).where(User.email == body.email))
+    if (
+        user is None
+        or not verify_password(body.password.get_secret_value(), user.password_hash)
+        or not user.is_active
+    ):
+        audit(db, request, user, "auth.login_failed")
+        db.commit()
+        raise ApiError(401, "INVALID_CREDENTIALS", "Email or password is incorrect")
+    audit(db, request, user, "auth.login")
+    db.commit()
+    return _start_session(response, user)
+
+
+@router.post("/register", status_code=201)
+def register(
+    body: RegisterRequest,
+    request: Request,
+    response: Response,
+    db: Annotated[Session, Depends(get_db)],
+):
+    if not get_settings().allow_registration:
+        raise ApiError(403, "REGISTRATION_CLOSED", "Registration is closed; ask an administrator")
+    _check_login_limit(f"register:{_client(request)}", 5)
+    if db.scalar(select(User.id).where(User.email == body.email)):
+        raise ApiError(409, "EMAIL_TAKEN", "An account with this email already exists")
+    # The first account on an empty install has to be able to manage the rest.
+    first = db.scalar(select(func.count()).select_from(User)) == 0
+    user = User(
+        email=body.email,
+        password_hash=hash_password(body.password.get_secret_value()),
+        role="admin" if first else "member",
+    )
+    db.add(user)
+    db.flush()
+    audit(db, request, user, "auth.register", "user", user.id)
+    db.commit()
+    return _start_session(response, user)
+
+
+@router.post("/password")
+def change_password(
+    body: ChangePasswordRequest,
+    request: Request,
+    response: Response,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+):
+    _check_login_limit(f"password:{user.id}", 5)
+    if not verify_password(body.current_password.get_secret_value(), user.password_hash):
+        raise ApiError(400, "INVALID_CREDENTIALS", "Current password is incorrect")
+    set_password(user, body.new_password.get_secret_value())
+    audit(db, request, user, "auth.password_changed", "user", user.id)
+    db.commit()
+    return _start_session(response, user)
+
+
+def _send_reset_email(to: str, url: str) -> None:
+    settings = get_settings()
+    message = EmailMessage()
+    message["Subject"] = "Reset your ResolveAI password"
+    message["From"] = settings.smtp_from
+    message["To"] = to
+    message.set_content(
+        f"Open this link within 30 minutes to choose a new password:\n\n{url}\n\n"
+        "If you did not ask for it, ignore this email."
+    )
+    with smtplib.SMTP(settings.smtp_host or "", settings.smtp_port, timeout=10) as smtp:
+        if settings.smtp_user and settings.smtp_password:
+            smtp.starttls()
+            smtp.login(settings.smtp_user, settings.smtp_password.get_secret_value())
+        smtp.send_message(message)
+
+
+@router.post("/password-reset/request", status_code=202)
+def request_password_reset(
+    body: EmailRequest, request: Request, db: Annotated[Session, Depends(get_db)]
+):
+    """Always 202, so the response does not reveal whether the email has an account."""
+    _check_login_limit(f"reset:{_client(request)}", 5)
+    user = db.scalar(select(User).where(User.email == body.email, User.is_active))
+    # Without SMTP there is no safe way to deliver a link; an administrator issues one instead.
+    if user is not None and get_settings().smtp_host:
+        url = create_reset_token(db, user)
+        audit(db, request, user, "auth.password_reset_requested", "user", user.id)
+        db.commit()
+        try:
+            _send_reset_email(user.email, url)
+        except (OSError, smtplib.SMTPException):
+            logger.warning("password reset email could not be sent")
+    return {"status": "accepted"}
+
+
+@router.post("/password-reset/confirm")
+def confirm_password_reset(
+    body: ResetConfirmRequest, request: Request, db: Annotated[Session, Depends(get_db)]
+):
+    _check_login_limit(f"reset-confirm:{_client(request)}", 10)
+    row = db.scalar(
+        select(PasswordResetToken)
+        .where(
+            PasswordResetToken.token_hash == hashlib.sha256(body.token.encode()).hexdigest(),
+            PasswordResetToken.used_at.is_(None),
+            PasswordResetToken.expires_at > datetime.now(UTC),
+        )
+        .with_for_update()
+    )
+    user = db.get(User, row.user_id) if row else None
+    if row is None or user is None or not user.is_active:
+        raise ApiError(400, "INVALID_TOKEN", "This reset link is invalid or has expired")
+    row.used_at = datetime.now(UTC)
+    set_password(user, body.new_password.get_secret_value())
+    audit(db, request, user, "auth.password_reset", "user", user.id)
+    db.commit()
+    return {"status": "ok"}
+
+
+def _oidc_get(url: str) -> dict:
+    return httpx.get(url, timeout=10).raise_for_status().json()
+
+
+def _oidc_post(url: str, data: dict) -> dict:
+    return httpx.post(url, data=data, timeout=10).raise_for_status().json()
+
+
+def _oidc_discovery() -> dict:
+    issuer = (get_settings().oidc_issuer or "").rstrip("/")
+    return _oidc_get(f"{issuer}/.well-known/openid-configuration")
+
+
+def _oidc_redirect_uri() -> str:
+    return f"{get_settings().app_url}/api/v1/auth/oidc/callback"
+
+
+@router.get("/oidc/login")
+def oidc_login():
+    settings = get_settings()
+    if not settings.oidc_enabled:
+        raise ApiError(404, "NOT_FOUND", "Single sign-on is not configured")
+    state, nonce, verifier = (secrets.token_urlsafe(32) for _ in range(3))
+    challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=")
+    query = urlencode(
+        {
+            "response_type": "code",
+            "client_id": settings.oidc_client_id,
+            "redirect_uri": _oidc_redirect_uri(),
+            "scope": "openid email",
+            "state": state,
+            "nonce": nonce,
+            "code_challenge": challenge.decode(),
+            "code_challenge_method": "S256",
+        }
+    )
+    response = RedirectResponse(f"{_oidc_discovery()['authorization_endpoint']}?{query}", 302)
+    response.set_cookie(
+        "resolveai_oidc",
+        jwt.encode(
+            {
+                "state": state,
+                "nonce": nonce,
+                "verifier": verifier,
+                "exp": datetime.now(UTC) + timedelta(minutes=10),
+            },
+            settings.jwt_secret.get_secret_value(),
+            algorithm="HS256",
+        ),
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",  # the identity provider sends the browser back from another site
+        path="/api/v1/auth/oidc",
+        max_age=600,
+    )
+    return response
+
+
+def _oidc_user(db: Session, request: Request, claims: dict) -> User | None:
+    email = str(claims.get("email", "")).lower()
+    if not email or claims.get("email_verified") is not True:
+        return None
+    subject = f"{claims['iss']}|{claims['sub']}"
+    user = db.scalar(select(User).where(User.oidc_subject == subject))
+    if user is None:
+        user = db.scalar(select(User).where(User.email == email))
+        if user is None:
+            first = db.scalar(select(func.count()).select_from(User)) == 0
+            user = User(email=email, password_hash="!", role="admin" if first else "member")
+            db.add(user)
+        elif user.oidc_subject is None:
+            # Whoever set this account's password may not own the mailbox: end their access.
+            set_password(user, secrets.token_urlsafe(32))
+        else:
+            return None
+        user.oidc_subject = subject
+        db.flush()
+    if not user.is_active:
+        return None
+    audit(db, request, user, "auth.sso_login", "user", user.id)
+    db.commit()
+    return user
+
+
+@router.get("/oidc/callback")
+def oidc_callback(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    code: str = "",
+    state: str = "",
+    resolveai_oidc: str | None = Cookie(default=None),
+):
+    settings = get_settings()
+    failed = RedirectResponse(f"{settings.app_url}/login?reason=sso", 302)
+    failed.delete_cookie("resolveai_oidc", path="/api/v1/auth/oidc")
+    secret = settings.oidc_client_secret
+    if not settings.oidc_enabled or secret is None or not code or not resolveai_oidc:
+        return failed
+    try:
+        saved = jwt.decode(
+            resolveai_oidc, settings.jwt_secret.get_secret_value(), algorithms=["HS256"]
+        )
+        if not hmac.compare_digest(str(saved["state"]), state):
+            return failed
+        discovery = _oidc_discovery()
+        tokens = _oidc_post(
+            discovery["token_endpoint"],
+            {
+                "grant_type": "authorization_code",
+                "code": code,
+                "redirect_uri": _oidc_redirect_uri(),
+                "client_id": settings.oidc_client_id,
+                "client_secret": secret.get_secret_value(),
+                "code_verifier": saved["verifier"],
+            },
+        )
+        id_token = tokens["id_token"]
+        keys = jwt.PyJWKSet.from_dict(_oidc_get(discovery["jwks_uri"]))
+        kid = jwt.get_unverified_header(id_token).get("kid")
+        key = next(k for k in keys.keys if kid is None or k.key_id == kid)
+        claims = jwt.decode(
+            id_token,
+            key.key,
+            algorithms=["RS256", "ES256"],
+            audience=settings.oidc_client_id,
+            issuer=discovery["issuer"],
+            options={"require": ["exp", "iat", "sub", "iss", "aud"]},
+        )
+        if not hmac.compare_digest(str(claims.get("nonce", "")), str(saved["nonce"])):
+            return failed
+    except (jwt.PyJWTError, httpx.HTTPError, KeyError, StopIteration, ValueError):
+        logger.warning("single sign-on callback rejected")
+        return failed
+    user = _oidc_user(db, request, claims)
+    if user is None:
+        return failed
+    response = RedirectResponse(f"{settings.app_url}/", 302)
+    response.delete_cookie("resolveai_oidc", path="/api/v1/auth/oidc")
+    _start_session(response, user)
+    return response
 
 
 @router.post("/logout", status_code=204)
@@ -99,4 +429,4 @@ def logout(response: Response):
 
 @router.get("/me")
 def me(user: Annotated[User, Depends(get_current_user)]):
-    return {"id": str(user.id), "email": user.email}
+    return _public(user)

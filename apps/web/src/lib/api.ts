@@ -149,3 +149,15 @@ export type Incident = {
 };
 
 export type IncidentDetail = Incident & { latest_analysis: Analysis | null; rca: Rca | null };
+
+export type AdminUser = { id: string; email: string; role: "admin" | "member"; is_active: boolean; sso: boolean; created_at: string };
+export type AuditEvent = {
+  id: string;
+  actor_email: string | null;
+  action: string;
+  resource_type: string | null;
+  resource_id: string | null;
+  detail: Record<string, unknown>;
+  request_id: string | null;
+  created_at: string;
+};
