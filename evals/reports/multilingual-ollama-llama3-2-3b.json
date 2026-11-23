@@ -1,0 +1,686 @@
+{
+  "generated_at": "2026-11-23T14:54:49+00:00",
+  "git_sha": "7855451",
+  "dataset": {
+    "name": "multilingual.jsonl",
+    "items": 20,
+    "by_scenario": {
+      "cross_lingual_en_to_id": 2,
+      "cross_lingual_id": 10,
+      "cross_lingual_other": 3,
+      "same_language_id": 2,
+      "unanswerable_id": 3
+    }
+  },
+  "config": {
+    "chat_provider": "ollama",
+    "chat_model": "llama3.2:3b",
+    "embedding_provider": "ollama",
+    "embedding_model": "nomic-embed-text-v2-moe",
+    "embedding_dim": 768,
+    "top_k": 5
+  },
+  "environment": "Linux x86_64, Python 3.12.16, in-process TestClient",
+  "metrics": {
+    "rag": {
+      "items": 20,
+      "failures": 0,
+      "failure_rate": 0.0,
+      "recall_at_5": 1.0,
+      "citation_validity_shipped": 1.0,
+      "citation_validity_model": 0.8667,
+      "abstention_accuracy": 1.0,
+      "false_abstention_rate": 0.2353,
+      "unsupported_claim_rate": 0.0,
+      "must_include_coverage": 1.0,
+      "answered_with_expected_citation": 1.0,
+      "latency_p50_ms": 12567.0,
+      "latency_p95_ms": 16571.2,
+      "input_tokens": 30456,
+      "output_tokens": 1616,
+      "estimated_cost_usd": 0.0,
+      "by_scenario": {
+        "cross_lingual_en_to_id": {
+          "items": 2,
+          "abstained": 0,
+          "must_not_claim_violations": 0
+        },
+        "cross_lingual_id": {
+          "items": 10,
+          "abstained": 4,
+          "must_not_claim_violations": 0
+        },
+        "cross_lingual_other": {
+          "items": 3,
+          "abstained": 0,
+          "must_not_claim_violations": 0
+        },
+        "same_language_id": {
+          "items": 2,
+          "abstained": 0,
+          "must_not_claim_violations": 0
+        },
+        "unanswerable_id": {
+          "items": 3,
+          "abstained": 3,
+          "must_not_claim_violations": 0
+        }
+      }
+    }
+  },
+  "results": {
+    "rag": [
+      {
+        "id": "id-kb-02",
+        "scenario_type": "cross_lingual_id",
+        "latency_ms": 21619.7,
+        "status_code": 200,
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "ss -ltnp"
+        ],
+        "abstention_correct": false,
+        "answer": "I don't have enough evidence in your knowledge base to answer this reliably. Upload a relevant SOP or runbook, or rephrase the question.",
+        "retrieved": [
+          "nginx-502-runbook#0",
+          "disk-space-sop#0",
+          "cache-redis-sop#0",
+          "wifi-kantor-sop-id#0",
+          "packet-loss-noc-sop#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [],
+        "shipped_citations": 0,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 1,
+        "cited_expected_source": false,
+        "input_tokens": 1851,
+        "output_tokens": 79,
+        "estimated_cost_usd": 0.0,
+        "provider": "ollama",
+        "model": "llama3.2:3b"
+      },
+      {
+        "id": "id-kb-03",
+        "scenario_type": "cross_lingual_id",
+        "latency_ms": 15112.6,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "80% untuk peringatan, 90% untuk kritis",
+        "retrieved": [
+          "disk-space-sop#0",
+          "packet-loss-noc-sop#0",
+          "backup-retention-policy-v1#0",
+          "backup-retention-policy-v2#0",
+          "wifi-kantor-sop-id#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "disk-space-sop#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": true,
+        "input_tokens": 1569,
+        "output_tokens": 90,
+        "estimated_cost_usd": 0.0,
+        "provider": "ollama",
+        "model": "llama3.2:3b"
+      },
+      {
+        "id": "id-kb-04",
+        "scenario_type": "cross_lingual_id",
+        "latency_ms": 7629.6,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "At least 14 hari",
+        "retrieved": [
+          "tls-certificate-expiry-sop#0",
+          "backup-retention-policy-v1#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "tls-certificate-expiry-sop#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": true,
+        "input_tokens": 938,
+        "output_tokens": 71,
+        "estimated_cost_usd": 0.0,
+        "provider": "ollama",
+        "model": "llama3.2:3b"
+      },
+      {
+        "id": "id-kb-06",
+        "scenario_type": "cross_lingual_id",
+        "latency_ms": 12516.2,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "Versi minimum aplikasi VPN yang diwajibkan sejak pembaruan keamanan bulan Maret adalah 5.2.",
+        "retrieved": [
+          "vpn-access-sop#0",
+          "backup-retention-policy-v1#0",
+          "backup-retention-policy-v2#0",
+          "tls-certificate-expiry-sop#0",
+          "db-connection-pool-sop#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "vpn-access-sop#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": true,
+        "input_tokens": 1523,
+        "output_tokens": 105,
+        "estimated_cost_usd": 0.0,
+        "provider": "ollama",
+        "model": "llama3.2:3b"
+      },
+      {
+        "id": "id-kb-09",
+        "scenario_type": "cross_lingual_id",
+        "latency_ms": 13903.2,
+        "status_code": 200,
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "lsof +L1"
+        ],
+        "abstention_correct": false,
+        "answer": "I don't have enough evidence in your knowledge base to answer this reliably. Upload a relevant SOP or runbook, or rephrase the question.",
+        "retrieved": [
+          "disk-space-sop#0",
+          "cache-redis-sop#0",
+          "db-connection-pool-sop#0",
+          "backup-retention-policy-v1#0",
+          "backup-retention-policy-v2#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [],
+        "shipped_citations": 0,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 1,
+        "cited_expected_source": false,
+        "input_tokens": 1514,
+        "output_tokens": 125,
+        "estimated_cost_usd": 0.0,
+        "provider": "ollama",
+        "model": "llama3.2:3b"
+      },
+      {
+        "id": "id-kb-10",
+        "scenario_type": "cross_lingual_id",
+        "latency_ms": 12617.9,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "5 percent",
+        "retrieved": [
+          "packet-loss-noc-sop#0",
+          "wifi-kantor-sop-id#0",
+          "vpn-access-sop#0",
+          "db-connection-pool-sop#0",
+          "disk-space-sop#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "packet-loss-noc-sop#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": true,
+        "input_tokens": 1780,
+        "output_tokens": 69,
+        "estimated_cost_usd": 0.0,
+        "provider": "ollama",
+        "model": "llama3.2:3b"
+      },
+      {
+        "id": "id-ts-02",
+        "scenario_type": "cross_lingual_id",
+        "latency_ms": 13443.5,
+        "status_code": 200,
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "pg_stat_activity"
+        ],
+        "abstention_correct": false,
+        "answer": "I don't have enough evidence in your knowledge base to answer this reliably. Upload a relevant SOP or runbook, or rephrase the question.",
+        "retrieved": [
+          "db-connection-pool-sop#0",
+          "packet-loss-noc-sop#0",
+          "nginx-502-runbook#0",
+          "cache-redis-sop#0",
+          "wifi-kantor-sop-id#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [],
+        "shipped_citations": 0,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": false,
+        "input_tokens": 1853,
+        "output_tokens": 87,
+        "estimated_cost_usd": 0.0,
+        "provider": "ollama",
+        "model": "llama3.2:3b"
+      },
+      {
+        "id": "id-ts-03",
+        "scenario_type": "cross_lingual_id",
+        "latency_ms": 13851.2,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "Periksa inode exhaustion dengan df -i, karena filesystem dapat penuh dengan inodes sementara bytes masih kosong. Periksa juga file yang masih terbuka oleh proses dengan lsof +L1.",
+        "retrieved": [
+          "disk-space-sop#0",
+          "cache-redis-sop#0",
+          "packet-loss-noc-sop#0",
+          "nginx-502-runbook#0",
+          "wifi-kantor-sop-id#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "disk-space-sop#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": true,
+        "input_tokens": 1861,
+        "output_tokens": 126,
+        "estimated_cost_usd": 0.0,
+        "provider": "ollama",
+        "model": "llama3.2:3b"
+      },
+      {
+        "id": "id-cf-01",
+        "scenario_type": "cross_lingual_id",
+        "latency_ms": 8771.6,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "30 hari",
+        "retrieved": [
+          "backup-retention-policy-v2#0",
+          "backup-retention-policy-v1#0",
+          "db-connection-pool-sop#0",
+          "disk-space-sop#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "backup-retention-policy-v2#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": true,
+        "input_tokens": 1323,
+        "output_tokens": 65,
+        "estimated_cost_usd": 0.0,
+        "provider": "ollama",
+        "model": "llama3.2:3b"
+      },
+      {
+        "id": "id-pi-02",
+        "scenario_type": "cross_lingual_id",
+        "latency_ms": 13147.6,
+        "status_code": 200,
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [
+          "6379"
+        ],
+        "abstention_correct": false,
+        "answer": "I don't have enough evidence in your knowledge base to answer this reliably. Upload a relevant SOP or runbook, or rephrase the question.",
+        "retrieved": [
+          "cache-redis-sop#0",
+          "nginx-502-runbook#0",
+          "db-connection-pool-sop#0",
+          "vpn-access-sop#0",
+          "packet-loss-noc-sop#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [],
+        "shipped_citations": 0,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": false,
+        "input_tokens": 1830,
+        "output_tokens": 76,
+        "estimated_cost_usd": 0.0,
+        "provider": "ollama",
+        "model": "llama3.2:3b"
+      },
+      {
+        "id": "id-na-01",
+        "scenario_type": "unanswerable_id",
+        "latency_ms": 3996.9,
+        "status_code": 200,
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "I don't have enough evidence in your knowledge base to answer this reliably. Upload a relevant SOP or runbook, or rephrase the question.",
+        "retrieved": [
+          "backup-retention-policy-v1#0",
+          "backup-retention-policy-v2#0"
+        ],
+        "recall_at_k": null,
+        "citations": [],
+        "shipped_citations": 0,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": null,
+        "input_tokens": 846,
+        "output_tokens": 40,
+        "estimated_cost_usd": 0.0,
+        "provider": "ollama",
+        "model": "llama3.2:3b"
+      },
+      {
+        "id": "id-na-02",
+        "scenario_type": "unanswerable_id",
+        "latency_ms": 2952.6,
+        "status_code": 200,
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "I don't have enough evidence in your knowledge base to answer this reliably. Upload a relevant SOP or runbook, or rephrase the question.",
+        "retrieved": [
+          "wifi-kantor-sop-id#0"
+        ],
+        "recall_at_k": null,
+        "citations": [],
+        "shipped_citations": 0,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": null,
+        "input_tokens": 826,
+        "output_tokens": 22,
+        "estimated_cost_usd": 0.0,
+        "provider": "ollama",
+        "model": "llama3.2:3b"
+      },
+      {
+        "id": "id-na-03",
+        "scenario_type": "unanswerable_id",
+        "latency_ms": 6309.5,
+        "status_code": 200,
+        "abstained": true,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "I don't have enough evidence in your knowledge base to answer this reliably. Upload a relevant SOP or runbook, or rephrase the question.",
+        "retrieved": [
+          "db-connection-pool-sop#0",
+          "disk-space-sop#0",
+          "backup-retention-policy-v2#0",
+          "backup-retention-policy-v1#0"
+        ],
+        "recall_at_k": null,
+        "citations": [],
+        "shipped_citations": 0,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": null,
+        "input_tokens": 1325,
+        "output_tokens": 22,
+        "estimated_cost_usd": 0.0,
+        "provider": "ollama",
+        "model": "llama3.2:3b"
+      },
+      {
+        "id": "es-kb-04",
+        "scenario_type": "cross_lingual_other",
+        "latency_ms": 7656.6,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "Certificados TLS deben renovarse al menos 14 d\u00edas antes del vencimiento.",
+        "retrieved": [
+          "tls-certificate-expiry-sop#0",
+          "backup-retention-policy-v1#0",
+          "backup-retention-policy-v2#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "tls-certificate-expiry-sop#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": true,
+        "input_tokens": 1065,
+        "output_tokens": 82,
+        "estimated_cost_usd": 0.0,
+        "provider": "ollama",
+        "model": "llama3.2:3b"
+      },
+      {
+        "id": "de-kb-03",
+        "scenario_type": "cross_lingual_other",
+        "latency_ms": 11429.3,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "Die Warn- und kritischen Schwellenwerte f\u00f6r die Festplattennutzung sind 80 % und 90 %.",
+        "retrieved": [
+          "disk-space-sop#0",
+          "packet-loss-noc-sop#0",
+          "wifi-kantor-sop-id#0",
+          "backup-retention-policy-v1#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "disk-space-sop#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": true,
+        "input_tokens": 1446,
+        "output_tokens": 109,
+        "estimated_cost_usd": 0.0,
+        "provider": "ollama",
+        "model": "llama3.2:3b"
+      },
+      {
+        "id": "ja-kb-06",
+        "scenario_type": "cross_lingual_other",
+        "latency_ms": 10038.7,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "5.2",
+        "retrieved": [
+          "vpn-access-sop#0",
+          "tls-certificate-expiry-sop#0",
+          "wifi-kantor-sop-id#0",
+          "packet-loss-noc-sop#0",
+          "backup-retention-policy-v1#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "vpn-access-sop#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": true,
+        "input_tokens": 1634,
+        "output_tokens": 79,
+        "estimated_cost_usd": 0.0,
+        "provider": "ollama",
+        "model": "llama3.2:3b"
+      },
+      {
+        "id": "id-doc-01",
+        "scenario_type": "same_language_id",
+        "latency_ms": 13658.8,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "Periksa kabel PoE dari access point ke switch lantai.",
+        "retrieved": [
+          "wifi-kantor-sop-id#0",
+          "nginx-502-runbook#0",
+          "vpn-access-sop#0",
+          "packet-loss-noc-sop#0",
+          "cache-redis-sop#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "wifi-kantor-sop-id#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": true,
+        "input_tokens": 1818,
+        "output_tokens": 94,
+        "estimated_cost_usd": 0.0,
+        "provider": "ollama",
+        "model": "llama3.2:3b"
+      },
+      {
+        "id": "id-doc-02",
+        "scenario_type": "same_language_id",
+        "latency_ms": 12930.4,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "40",
+        "retrieved": [
+          "wifi-kantor-sop-id#0",
+          "vpn-access-sop#0",
+          "packet-loss-noc-sop#0",
+          "nginx-502-runbook#0",
+          "db-connection-pool-sop#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "wifi-kantor-sop-id#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": true,
+        "input_tokens": 1874,
+        "output_tokens": 90,
+        "estimated_cost_usd": 0.0,
+        "provider": "ollama",
+        "model": "llama3.2:3b"
+      },
+      {
+        "id": "en-doc-03",
+        "scenario_type": "cross_lingual_en_to_id",
+        "latency_ms": 10740.5,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "VLAN 40",
+        "retrieved": [
+          "wifi-kantor-sop-id#0",
+          "vpn-access-sop#0",
+          "packet-loss-noc-sop#0",
+          "disk-space-sop#0",
+          "nginx-502-runbook#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "wifi-kantor-sop-id#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": true,
+        "input_tokens": 1877,
+        "output_tokens": 93,
+        "estimated_cost_usd": 0.0,
+        "provider": "ollama",
+        "model": "llama3.2:3b"
+      },
+      {
+        "id": "en-doc-04",
+        "scenario_type": "cross_lingual_en_to_id",
+        "latency_ms": 16305.5,
+        "status_code": 200,
+        "abstained": false,
+        "must_not_claim_violations": [],
+        "must_include_missing": [],
+        "abstention_correct": true,
+        "answer": "Within 15 minutes.",
+        "retrieved": [
+          "wifi-kantor-sop-id#0",
+          "db-connection-pool-sop#0",
+          "packet-loss-noc-sop#0",
+          "cache-redis-sop#0",
+          "vpn-access-sop#0"
+        ],
+        "recall_at_k": 1.0,
+        "citations": [
+          "wifi-kantor-sop-id#0"
+        ],
+        "shipped_citations": 1,
+        "shipped_citations_invalid": 0,
+        "model_citations_rejected": 0,
+        "cited_expected_source": true,
+        "input_tokens": 1703,
+        "output_tokens": 92,
+        "estimated_cost_usd": 0.0,
+        "provider": "ollama",
+        "model": "llama3.2:3b"
+      }
+    ]
+  },
+  "method": [
+    "- Recall@5: per answerable item with labeled sources, |expected \u2229 top-5 retrieved| / |expected|, averaged. Chunk labels are `<fixture_id>#<chunk_index>`.",
+    "- Citation validity (shipped): every citation returned by `/chat` is re-fetched via `/chunks/{id}` and its quote must appear verbatim (whitespace/case-normalized) in the stored chunk text. Any failure blocks release.",
+    "- Citation validity (model): shipped / (shipped + rejected by the server-side validator); measures how often the model proposes bad citations.",
+    "- Abstention: `abstained` flag from the API. Unanswerable items should abstain; answerable items should not.",
+    "- Unsupported-claim rate: automated proxy \u2014 share of items whose answer contains any `must_not_claim` phrase. It can miss paraphrased unsupported claims and can flag answers that mention an outdated value while correctly rejecting it, so it does not replace the human groundedness rubric (PRD \u00a711).",
+    "- must_include coverage: answered items that contain every `must_include` phrase (substring match).",
+    "- Latency is measured client-side around each `/chat` call, sequentially, on the machine listed above.",
+    "- Baseline (optional): the same chat provider and grounded prompt with zero chunks, so it can only abstain or answer from model knowledge.",
+    "- Small sample (30 items): these are demonstration metrics, not statistically robust guarantees."
+  ],
+  "gates_failed": []
+}
