@@ -1,0 +1,45 @@
+from uuid import UUID
+
+from fastapi import Cookie, Depends, Header, Request
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.core.database import get_db
+from app.core.errors import ApiError
+from app.core.security import decode_access_token
+from app.models import Incident, User
+
+
+def get_current_user(
+    request: Request,
+    db: Session = Depends(get_db),
+    authorization: str | None = Header(default=None),
+    resolveai_session: str | None = Cookie(default=None),
+) -> User:
+    token = authorization.removeprefix("Bearer ").strip() if authorization else resolveai_session
+    if not token:
+        raise ApiError(401, "UNAUTHORIZED", "Authentication required")
+    try:
+        user_id, _ = decode_access_token(token)
+    except TimeoutError:
+        raise ApiError(401, "TOKEN_EXPIRED", "Session expired") from None
+    except ValueError:
+        raise ApiError(401, "UNAUTHORIZED", "Invalid authentication token") from None
+    user = db.scalar(select(User).where(User.id == user_id))
+    if user is None:
+        raise ApiError(401, "UNAUTHORIZED", "Invalid authentication token")
+    request.state.user_id = user.id
+    return user
+
+
+def get_owned[ModelT](db: Session, model: type[ModelT], object_id: UUID, user: User) -> ModelT:
+    instance = db.get(model, object_id)
+    if instance is None:
+        raise ApiError(404, "NOT_FOUND", "Resource not found")
+    owner_id = getattr(instance, "owner_id", None)
+    if owner_id is None and hasattr(instance, "incident_id"):
+        incident = db.get(Incident, instance.incident_id)
+        owner_id = getattr(incident, "owner_id", None)
+    if owner_id != user.id:
+        raise ApiError(403, "FORBIDDEN", "You do not have access to this resource")
+    return instance
