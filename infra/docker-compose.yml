@@ -60,7 +60,7 @@ services:
     image: ollama/ollama
     profiles: ["ollama"]
     ports:
-    - "127.0.0.1:11434:11434"
+      - "127.0.0.1:11434:11434"
     volumes:
       - resolveai_ollama:/root/.ollama
 
