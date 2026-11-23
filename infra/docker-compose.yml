@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: resolveai
       POSTGRES_DB: resolveai
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
       - resolveai_db:/var/lib/postgresql/data
     healthcheck:
@@ -60,7 +60,7 @@ services:
     image: ollama/ollama
     profiles: ["ollama"]
     ports:
-      - "11434:11434"
+    - "127.0.0.1:11434:11434"
     volumes:
       - resolveai_ollama:/root/.ollama
 

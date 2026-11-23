@@ -29,6 +29,10 @@ ResolveAI is a portfolio demo, not a hardened production system. These are the c
 
 Per-user rate limit on LLM endpoints (`RATE_LIMIT_PER_MINUTE`), upload size cap, `top_k` bounded 1–10, context token budget, max output tokens, and a simulated daily budget alert.
 
+## Local Compose ports
+
+PostgreSQL (5433) and Ollama (11434) bind to loopback only. The API and web ports retain their existing bindings.
+
 ## Out of scope (known limitations)
 
 Real SSO/RBAC, multi-tenant isolation beyond `owner_id`, malware scanning of uploads, OCR, encryption at rest beyond what the database provides, and distributed rate limiting (the limiter is in-process).
